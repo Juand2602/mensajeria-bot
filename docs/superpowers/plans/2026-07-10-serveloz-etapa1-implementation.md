@@ -19,6 +19,7 @@
 - **Pago contraentrega** — el sistema solo registra `estadoPago`, no procesa pagos.
 - **TypeScript `strict: false`**, `target: ES2020`, `module: commonjs` — igual que barberia-bot.
 - **Railway** como plataforma de hosting.
+- **Sin valores de respaldo hardcodeados para secretos** (`WHATSAPP_VERIFY_TOKEN`, `JWT_SECRET`, `ADMIN_PASSWORD`): si la variable de entorno no está definida, el servidor debe fallar rápido con un error claro en vez de correr con un valor por defecto adivinable. Esto es una desviación deliberada del patrón de `barberia-bot` (que sí usa fallbacks hardcodeados), decidida tras una revisión de seguridad durante la implementación. Config no sensible (URLs, nombres, tarifas) sí puede tener defaults normales.
 - Spec completo de referencia: `docs/superpowers/specs/2026-07-10-mensajeria-bot-etapa1-design.md`.
 
 ---
@@ -2052,7 +2053,15 @@ git commit -m "feat: bot - momento, precio, confirmación de carrera y cancelaci
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'cambiar_este_secret_en_produccion';
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Falta configurar la variable de entorno ${name}`);
+  }
+  return value;
+}
+
+const JWT_SECRET = requireEnv('JWT_SECRET');
 
 export function generarToken(): string {
   return jwt.sign({ admin: true }, JWT_SECRET, { expiresIn: '8h' });
@@ -2084,8 +2093,12 @@ const router = Router();
 
 router.post('/auth/login', (req: Request, res: Response) => {
   const { username, password } = req.body;
-  const adminUser = process.env.ADMIN_USERNAME || 'admin';
-  const adminPass = process.env.ADMIN_PASSWORD || 'admin';
+  const adminUser = process.env.ADMIN_USERNAME;
+  const adminPass = process.env.ADMIN_PASSWORD;
+  if (!adminUser || !adminPass) {
+    res.status(500).json({ error: 'ADMIN_USERNAME/ADMIN_PASSWORD no están configurados en el servidor' });
+    return;
+  }
 
   if (username === adminUser && password === adminPass) {
     res.json({ token: generarToken(), message: 'Login exitoso' });
