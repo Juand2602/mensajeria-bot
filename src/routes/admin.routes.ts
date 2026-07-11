@@ -6,6 +6,8 @@ import { conductoresService } from '../services/conductores.service';
 import { configuracionService } from '../services/configuracion.service';
 import { radarService } from '../services/radar.service';
 import { notificacionesService } from '../services/notificaciones.service';
+import { whatsappMessagesService } from '../services/whatsapp/messages.service';
+import { mensajeriaService } from '../services/mensajeria.service';
 import prisma from '../config/database';
 
 const router = Router();
@@ -198,6 +200,85 @@ router.put('/config', verificarAdmin, async (req, res) => {
   try {
     const config = await configuracionService.actualizar(req.body);
     res.json(config);
+  } catch (e: any) { res.status(400).json({ error: e.message }); }
+});
+
+// ==================== CONVERSACIONES (CHAT MANUAL) ====================
+router.get('/conversaciones', verificarAdmin, async (_req, res) => {
+  try {
+    const ultimosMensajes = await prisma.mensaje.groupBy({ by: ['telefono'], _max: { timestamp: true } });
+    const telefonos = ultimosMensajes
+      .sort((a, b) => (b._max.timestamp?.getTime() || 0) - (a._max.timestamp?.getTime() || 0))
+      .map(m => m.telefono);
+
+    const conversaciones = await Promise.all(telefonos.map(async telefono => {
+      const [cliente, conversacion, ultimoMensaje] = await Promise.all([
+        prisma.cliente.findUnique({ where: { telefono } }),
+        prisma.conversacion.findFirst({ where: { telefono, activa: true } }),
+        prisma.mensaje.findFirst({ where: { telefono }, orderBy: { timestamp: 'desc' } }),
+      ]);
+      return {
+        telefono,
+        clienteNombre: cliente?.nombre || telefono,
+        modoManual: conversacion?.modoManual || false,
+        ultimoMensaje: ultimoMensaje?.contenido || '',
+        ultimoMensajeFecha: ultimoMensaje?.timestamp || null,
+      };
+    }));
+
+    res.json(conversaciones);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get('/conversaciones/:telefono/mensajes', verificarAdmin, async (req, res) => {
+  try {
+    const { desde } = req.query;
+    const where: any = { telefono: req.params.telefono };
+    if (desde) where.timestamp = { gt: new Date(desde as string) };
+    const mensajes = await prisma.mensaje.findMany({ where, orderBy: { timestamp: 'asc' } });
+    res.json(mensajes);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/conversaciones/:telefono/mensajes', verificarAdmin, async (req, res) => {
+  try {
+    const telefono = req.params.telefono;
+    const { contenido } = req.body;
+
+    const ultimoEntrante = await prisma.mensaje.findFirst({
+      where: { telefono, direccion: 'ENTRANTE' },
+      orderBy: { timestamp: 'desc' },
+    });
+    const dentroDeVentana = !!ultimoEntrante && (Date.now() - ultimoEntrante.timestamp.getTime()) < 24 * 60 * 60 * 1000;
+    if (!dentroDeVentana) {
+      res.status(400).json({ error: 'Han pasado más de 24h desde el último mensaje del cliente. Se necesita una plantilla pre-aprobada para escribirle.' });
+      return;
+    }
+
+    await whatsappMessagesService.enviarMensaje(telefono, contenido);
+    await mensajeriaService.registrarSaliente(telefono, contenido, 'DUEÑO');
+
+    const conversacion = await prisma.conversacion.findFirst({ where: { telefono, activa: true } });
+    if (conversacion) {
+      await prisma.conversacion.update({ where: { id: conversacion.id }, data: { modoManual: true } });
+    }
+
+    res.status(201).json({ message: 'Mensaje enviado' });
+  } catch (e: any) { res.status(400).json({ error: e.message }); }
+});
+
+router.put('/conversaciones/:telefono/modo', verificarAdmin, async (req, res) => {
+  try {
+    const conversacion = await prisma.conversacion.findFirst({ where: { telefono: req.params.telefono, activa: true } });
+    if (!conversacion) {
+      res.status(404).json({ error: 'No hay una conversación activa para este teléfono' });
+      return;
+    }
+    const actualizada = await prisma.conversacion.update({
+      where: { id: conversacion.id },
+      data: { modoManual: !!req.body.modoManual },
+    });
+    res.json(actualizada);
   } catch (e: any) { res.status(400).json({ error: e.message }); }
 });
 
