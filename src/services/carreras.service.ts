@@ -28,10 +28,18 @@ export class CarrerasService {
     if (!cliente) throw new Error('Cliente no encontrado');
 
     let precio = await this.calcularPrecio(data.distanciaKm);
-    let descuentoAplicado = false;
-    if (cliente.descuentosDisponibles > 0) {
+
+    // Decremento condicionado atómicamente a nivel de base de datos: si dos
+    // solicitudes concurrentes del mismo cliente intentaran usar el mismo
+    // crédito de descuento, solo una de las dos actualizaciones afecta una
+    // fila (la segunda encuentra `descuentosDisponibles` ya en 0 y no aplica).
+    const descuento = await prisma.cliente.updateMany({
+      where: { id: data.clienteId, descuentosDisponibles: { gt: 0 } },
+      data: { descuentosDisponibles: { decrement: 1 } },
+    });
+    const descuentoAplicado = descuento.count > 0;
+    if (descuentoAplicado) {
       precio = Math.round(precio * 0.8);
-      descuentoAplicado = true;
     }
 
     const carrera = await prisma.carrera.create({
@@ -55,13 +63,6 @@ export class CarrerasService {
       },
       include: { cliente: true, conductor: true },
     });
-
-    if (descuentoAplicado) {
-      await prisma.cliente.update({
-        where: { id: cliente.id },
-        data: { descuentosDisponibles: { decrement: 1 } },
-      });
-    }
 
     return carrera;
   }
@@ -110,11 +111,20 @@ export class CarrerasService {
   }
 
   async marcarCompletada(id: string) {
-    const carrera = await prisma.carrera.update({
-      where: { id },
+    // Guarda atómica contra doble procesamiento (ej. doble clic en el panel):
+    // solo la primera llamada que encuentra la carrera todavía no completada
+    // hace la transición y acredita el descuento de referido.
+    const resultado = await prisma.carrera.updateMany({
+      where: { id, estado: { not: 'COMPLETADA' } },
       data: { estado: 'COMPLETADA' },
-      include: { cliente: true, conductor: true },
     });
+
+    if (resultado.count === 0) {
+      const carrera = await this.getById(id);
+      return { carrera, referidorNotificar: null };
+    }
+
+    const carrera = await this.getById(id);
 
     let referidorNotificar: { telefono: string } | null = null;
     if (carrera.cliente.referidoPorId) {

@@ -72,11 +72,19 @@ export class MessageParserService {
   }
 
   private parsearHora(textoLower: string): { horas: number; minutos: number } | null {
-    const match = textoLower.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
+    // Requiere am/pm o un separador ":" junto al número — evita que un número
+    // suelto de una fecha como "25/12" se confunda con una hora.
+    let match = textoLower.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/);
+    let periodo: string | undefined;
+    if (match) {
+      periodo = match[3];
+    } else {
+      match = textoLower.match(/(\d{1,2}):(\d{2})/);
+    }
     if (!match) return null;
+
     let horas = parseInt(match[1]);
     const minutos = match[2] ? parseInt(match[2]) : 0;
-    const periodo = match[3];
     if (periodo === 'pm' && horas < 12) horas += 12;
     if (periodo === 'am' && horas === 12) horas = 0;
     if (horas > 23 || minutos > 59) return null;
