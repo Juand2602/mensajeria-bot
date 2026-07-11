@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== CLIENTES ====================
+model Cliente {
+  id                    String   @id @default(uuid())
+  nombre                String
+  telefono              String   @unique
+  email                 String?
+  notas                 String?
+  activo                Boolean  @default(true)
+
+  referidoPorId         String?
+  referidoPor           Cliente?  @relation("Referidos", fields: [referidoPorId], references: [id])
+  referidos             Cliente[] @relation("Referidos")
+  descuentosDisponibles Int      @default(0)
+
+  carreras       Carrera[]
+  conversaciones Conversacion[]
+  mensajes       Mensaje[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([telefono])
+  @@index([nombre])
+}
+
+// ==================== CONDUCTORES ====================
+model Conductor {
+  id        String   @id @default(uuid())
+  nombre    String
+  telefono  String
+  activo    Boolean  @default(true)
+  notas     String?
+
+  carreras Carrera[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([activo])
+}
+
+// ==================== CARRERAS ====================
+model Carrera {
+  id       String  @id @default(uuid())
+  radicado String  @unique
+
+  clienteId   String
+  cliente     Cliente    @relation(fields: [clienteId], references: [id])
+  conductorId String?
+  conductor   Conductor? @relation(fields: [conductorId], references: [id])
+
+  tipoServicio String // DOMICILIO | MOTOTAXI
+
+  direccionRecogida String
+  recogidaLat       Float
+  recogidaLng       Float
+
+  direccionDestino String
+  destinoLat       Float
+  destinoLng       Float
+
+  distanciaKm Float
+  precio      Float
+
+  estado     String @default("PENDIENTE_ASIGNACION") // PENDIENTE_ASIGNACION | ASIGNADA | COMPLETADA | CANCELADA
+  estadoPago String @default("PENDIENTE") // PENDIENTE | PAGADO
+
+  fechaHoraProgramada DateTime?
+  avisoProgramadaEnviado Boolean @default(false)
+
+  descuentoAplicado Boolean @default(false)
+  origen            String  @default("WHATSAPP") // WHATSAPP | PANEL
+
+  notas             String?
+  motivoCancelacion String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([radicado])
+  @@index([estado])
+  @@index([conductorId])
+  @@index([fechaHoraProgramada])
+}
+
+// ==================== CONVERSACIONES (CONTEXTO BOT) ====================
+model Conversacion {
+  id           String   @id @default(uuid())
+  clienteId    String
+  cliente      Cliente  @relation(fields: [clienteId], references: [id])
+  telefono     String
+  estado       String   @default("INICIAL")
+  contexto     String
+  lastActivity DateTime @default(now())
+  activa       Boolean  @default(true)
+  modoManual   Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([telefono, activa])
+  @@index([lastActivity])
+}
+
+// ==================== CONFIGURACIÓN (fila única, editable desde el panel) ====================
+model Configuracion {
+  id          String   @id @default("default")
+  tarifaBase  Float    @default(3000)
+  tarifaPorKm Float    @default(800)
+  updatedAt   DateTime @updatedAt
+}
+
+// ==================== MENSAJES (HISTORIAL DE CHAT) ====================
+model Mensaje {
+  id         String   @id @default(uuid())
+  telefono   String
+  clienteId  String?
+  cliente    Cliente? @relation(fields: [clienteId], references: [id])
+  direccion  String // ENTRANTE | SALIENTE
+  contenido  String
+  enviadoPor String // CLIENTE | BOT | DUEÑO
+  timestamp  DateTime @default(now())
+
+  @@index([telefono, timestamp])
+}
