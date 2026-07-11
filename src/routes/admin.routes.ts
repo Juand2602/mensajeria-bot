@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import { generarToken, verificarAdmin } from '../middleware/auth';
 import { carrerasService } from '../services/carreras.service';
 import { clientesService } from '../services/clientes.service';
+import { conductoresService } from '../services/conductores.service';
+import { configuracionService } from '../services/configuracion.service';
 import { radarService } from '../services/radar.service';
 import { notificacionesService } from '../services/notificaciones.service';
 import prisma from '../config/database';
@@ -136,6 +138,66 @@ router.put('/carreras/:id/estado', verificarAdmin, async (req, res) => {
     }
     const carrera = await carrerasService.cambiarEstado(req.params.id, req.body.estado, req.body.motivoCancelacion);
     res.json(carrera);
+  } catch (e: any) { res.status(400).json({ error: e.message }); }
+});
+
+// ==================== CONDUCTORES ====================
+router.get('/conductores', verificarAdmin, async (_req, res) => {
+  try {
+    const conductores = await conductoresService.getAll();
+    res.json(conductores);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/conductores', verificarAdmin, async (req, res) => {
+  try {
+    const conductor = await conductoresService.create(req.body);
+    res.status(201).json(conductor);
+  } catch (e: any) { res.status(400).json({ error: e.message }); }
+});
+
+router.put('/conductores/:id', verificarAdmin, async (req, res) => {
+  try {
+    const conductor = await conductoresService.update(req.params.id, req.body);
+    res.json(conductor);
+  } catch (e: any) { res.status(400).json({ error: e.message }); }
+});
+
+router.delete('/conductores/:id', verificarAdmin, async (req, res) => {
+  try {
+    await conductoresService.delete(req.params.id);
+    res.json({ message: 'Conductor desactivado' });
+  } catch (e: any) { res.status(400).json({ error: e.message }); }
+});
+
+// ==================== CLIENTES ====================
+router.get('/clientes', verificarAdmin, async (req, res) => {
+  try {
+    const { search } = req.query;
+    const clientes = await clientesService.getAll(search as string | undefined);
+    res.json(clientes);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.put('/clientes/:id', verificarAdmin, async (req, res) => {
+  try {
+    const cliente = await clientesService.update(req.params.id, req.body);
+    res.json(cliente);
+  } catch (e: any) { res.status(400).json({ error: e.message }); }
+});
+
+// ==================== CONFIGURACIÓN ====================
+router.get('/config', verificarAdmin, async (_req, res) => {
+  try {
+    const config = await configuracionService.obtener();
+    res.json(config);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.put('/config', verificarAdmin, async (req, res) => {
+  try {
+    const config = await configuracionService.actualizar(req.body);
+    res.json(config);
   } catch (e: any) { res.status(400).json({ error: e.message }); }
 });
 
