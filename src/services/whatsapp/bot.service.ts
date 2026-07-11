@@ -1,10 +1,13 @@
 import prisma from '../../config/database';
 import { radarService } from '../radar.service';
 import { clientesService } from '../clientes.service';
+import { carrerasService } from '../carreras.service';
+import { notificacionesService } from '../notificaciones.service';
 import { mensajeriaService } from '../mensajeria.service';
 import { messageParser } from './parser.service';
 import { MENSAJES, validarNombreCompleto } from './templates';
 import { ConversationState, ConversationContext } from '../../types';
+import { botConfig } from '../../config/whatsapp';
 
 const NOMBRE_PLACEHOLDER = 'Cliente Nuevo';
 
@@ -84,8 +87,23 @@ export class WhatsAppBotService {
         await this.manejarDireccion(telefono, mensaje, contexto, conversacionId, 'destino', ubicacion); break;
       case 'ESPERANDO_CONFIRMACION_DESTINO':
         await this.manejarConfirmacionDireccion(telefono, mensaje, contexto, conversacionId, 'destino'); break;
+      case 'ESPERANDO_MOMENTO':
+        await this.manejarMomento(telefono, mensaje, contexto, conversacionId); break;
+      case 'ESPERANDO_FECHA_HORA_PROGRAMADA':
+        await this.manejarFechaHoraProgramada(telefono, mensaje, contexto, conversacionId); break;
+      case 'CONFIRMACION_PRECIO':
+        await this.manejarConfirmacionPrecio(telefono, mensaje, contexto, conversacionId); break;
+      case 'ESPERANDO_ASIGNACION':
+        await mensajeriaService.enviarMensaje(
+          telefono,
+          'Ya recibimos tu pedido y estamos asignando un conductor. Te avisamos apenas esté en camino. 🛵'
+        );
+        break;
+      case 'ESPERANDO_SELECCION_CARRERA_CANCELAR':
+        await this.manejarSeleccionCarreraCancelar(telefono, mensaje, contexto, conversacionId); break;
+      case 'ESPERANDO_CONFIRMACION_CANCELACION':
+        await this.manejarConfirmacionCancelacion(telefono, mensaje, contexto, conversacionId); break;
       default:
-        // Estados de momento/precio/asignación/cancelación se agregan en la Task 10.
         await mensajeriaService.enviarMensaje(telefono, MENSAJES.OPCION_INVALIDA());
     }
   }
@@ -203,12 +221,158 @@ export class WhatsAppBotService {
     }
   }
 
-  private async manejarCancelacionGlobal(telefono: string) {
-    const conv = await this.obtenerConversacionActiva(telefono);
-    if (conv) {
-      await mensajeriaService.enviarMensaje(telefono, MENSAJES.DESPEDIDA());
-      await this.finalizarConversacion(conv.id);
+  private async manejarMomento(telefono: string, mensaje: string, contexto: ConversationContext, conversacionId: string) {
+    if (mensaje === 'momento_ahora') {
+      delete contexto.fechaHoraProgramada;
+      await this.calcularYMostrarPrecio(telefono, contexto, conversacionId);
+    } else if (mensaje === 'momento_programado') {
+      await mensajeriaService.enviarMensaje(telefono, MENSAJES.SOLICITAR_FECHA_HORA_PROGRAMADA());
+      await this.actualizarConversacion(conversacionId, 'ESPERANDO_FECHA_HORA_PROGRAMADA', contexto);
+    } else {
+      await mensajeriaService.enviarMensaje(telefono, MENSAJES.OPCION_INVALIDA());
     }
+  }
+
+  private async manejarFechaHoraProgramada(telefono: string, mensaje: string, contexto: ConversationContext, conversacionId: string) {
+    const fecha = messageParser.parsearFechaProgramada(mensaje);
+    if (!fecha || fecha < new Date()) {
+      await mensajeriaService.enviarMensaje(telefono, MENSAJES.FECHA_PROGRAMADA_INVALIDA());
+      return;
+    }
+    contexto.fechaHoraProgramada = fecha.toISOString();
+    await this.calcularYMostrarPrecio(telefono, contexto, conversacionId);
+  }
+
+  private async calcularYMostrarPrecio(telefono: string, contexto: ConversationContext, conversacionId: string) {
+    try {
+      const distanciaKm = await radarService.calcularDistanciaKm(
+        { lat: contexto.recogida!.lat!, lng: contexto.recogida!.lng! },
+        { lat: contexto.destino!.lat!, lng: contexto.destino!.lng! }
+      );
+      contexto.distanciaKm = distanciaKm;
+
+      const cliente = await clientesService.buscarPorTelefono(telefono);
+      const conDescuento = !!cliente && cliente.descuentosDisponibles > 0;
+      let precio = await carrerasService.calcularPrecio(distanciaKm);
+      if (conDescuento) precio = Math.round(precio * 0.8);
+      contexto.precio = precio;
+
+      await mensajeriaService.enviarMensajeConBotones(
+        telefono,
+        MENSAJES.PRECIO_CALCULADO({ distanciaKm, precio, conDescuento }),
+        [
+          { id: 'precio_si', title: '✅ Confirmar' },
+          { id: 'precio_no', title: '❌ Cancelar' },
+        ]
+      );
+      await this.actualizarConversacion(conversacionId, 'CONFIRMACION_PRECIO', contexto);
+    } catch (error) {
+      console.error('Error calculando precio:', error);
+      await mensajeriaService.enviarMensaje(telefono, MENSAJES.ERROR_SERVIDOR());
+    }
+  }
+
+  private async manejarConfirmacionPrecio(telefono: string, mensaje: string, contexto: ConversationContext, conversacionId: string) {
+    if (mensaje === 'precio_no' || messageParser.esNegativo(mensaje)) {
+      await mensajeriaService.enviarMensaje(telefono, MENSAJES.DESPEDIDA());
+      await this.finalizarConversacion(conversacionId);
+      return;
+    }
+    if (mensaje !== 'precio_si' && !messageParser.esAfirmativo(mensaje)) {
+      await mensajeriaService.enviarMensaje(telefono, MENSAJES.OPCION_INVALIDA());
+      return;
+    }
+
+    const cliente = await clientesService.buscarPorTelefono(telefono);
+    if (!cliente) {
+      await mensajeriaService.enviarMensaje(telefono, MENSAJES.ERROR_SERVIDOR());
+      return;
+    }
+
+    const carrera = await carrerasService.create({
+      clienteId: cliente.id,
+      tipoServicio: contexto.tipoServicio!,
+      direccionRecogida: contexto.recogida!.direccionFormateada!,
+      recogidaLat: contexto.recogida!.lat!,
+      recogidaLng: contexto.recogida!.lng!,
+      direccionDestino: contexto.destino!.direccionFormateada!,
+      destinoLat: contexto.destino!.lat!,
+      destinoLng: contexto.destino!.lng!,
+      distanciaKm: contexto.distanciaKm!,
+      fechaHoraProgramada: contexto.fechaHoraProgramada ? new Date(contexto.fechaHoraProgramada) : null,
+      origen: 'WHATSAPP',
+    });
+
+    await mensajeriaService.enviarMensaje(telefono, MENSAJES.CARRERA_CONFIRMADA({ radicado: carrera.radicado }));
+
+    if (!contexto.fechaHoraProgramada) {
+      try { await notificacionesService.notificarNuevaSolicitud(carrera.id); } catch (e) { console.error('Error notificando nueva solicitud:', e); }
+    }
+
+    await this.actualizarConversacion(conversacionId, 'ESPERANDO_ASIGNACION', { carreraId: carrera.id, radicado: carrera.radicado });
+  }
+
+  private async manejarSeleccionCarreraCancelar(telefono: string, mensaje: string, contexto: ConversationContext, conversacionId: string) {
+    const radicado = mensaje.startsWith('carrera_') ? mensaje.replace('carrera_', '') : messageParser.extraerRadicado(mensaje);
+    if (!radicado) {
+      await mensajeriaService.enviarMensaje(telefono, MENSAJES.RADICADO_NO_ENCONTRADO());
+      return;
+    }
+    const carrera = await carrerasService.buscarPorRadicado(radicado);
+    if (!carrera || carrera.cliente.telefono !== telefono) {
+      await mensajeriaService.enviarMensaje(telefono, MENSAJES.RADICADO_NO_ENCONTRADO());
+      return;
+    }
+    contexto.radicado = carrera.radicado;
+    contexto.carreraId = carrera.id;
+    await mensajeriaService.enviarMensajeConBotones(
+      telefono,
+      MENSAJES.CONFIRMAR_CANCELACION({ radicado: carrera.radicado, destino: carrera.direccionDestino }),
+      [
+        { id: 'confirmar_cancelar', title: '✅ Sí, cancelar' },
+        { id: 'conservar_carrera', title: '❌ No' },
+      ]
+    );
+    await this.actualizarConversacion(conversacionId, 'ESPERANDO_CONFIRMACION_CANCELACION', contexto);
+  }
+
+  private async manejarConfirmacionCancelacion(telefono: string, mensaje: string, contexto: ConversationContext, conversacionId: string) {
+    if (mensaje === 'confirmar_cancelar' || messageParser.esAfirmativo(mensaje)) {
+      await carrerasService.cambiarEstado(contexto.carreraId!, 'CANCELADA', 'Cancelado por el cliente vía WhatsApp');
+      await mensajeriaService.enviarMensaje(telefono, MENSAJES.CARRERA_CANCELADA());
+    } else {
+      await mensajeriaService.enviarMensaje(telefono, MENSAJES.DESPEDIDA());
+    }
+    await this.finalizarConversacion(conversacionId);
+  }
+
+  private async manejarCancelacionGlobal(telefono: string) {
+    const activas = await carrerasService.getActivasPorTelefono(telefono);
+
+    if (activas.length === 0) {
+      const conv = await this.obtenerConversacionActiva(telefono);
+      if (conv) {
+        await mensajeriaService.enviarMensaje(telefono, MENSAJES.DESPEDIDA());
+        await this.finalizarConversacion(conv.id);
+      }
+      return;
+    }
+
+    const contexto: ConversationContext = {
+      carrerasDisponibles: activas.map((c, i) => ({
+        numero: i + 1, radicado: c.radicado, tipoServicio: c.tipoServicio, destino: c.direccionDestino,
+      })),
+    };
+
+    await mensajeriaService.enviarMensajeConLista(telefono, '¿Cuál carrera deseas cancelar?', 'Ver carreras', [
+      {
+        title: 'Carreras activas',
+        rows: activas.map(c => ({ id: `carrera_${c.radicado}`, title: c.radicado, description: c.direccionDestino.substring(0, 72) })),
+      },
+    ]);
+
+    const conv = await this.obtenerConversacionActiva(telefono) || await this.crearConversacion(telefono);
+    await this.actualizarConversacion(conv.id, 'ESPERANDO_SELECCION_CARRERA_CANCELAR', contexto);
   }
 
   private async obtenerConversacionActiva(telefono: string) {
@@ -238,3 +402,12 @@ export class WhatsAppBotService {
 }
 
 export const whatsappBotService = new WhatsAppBotService();
+
+export async function limpiarConversacionesInactivas() {
+  const fechaLimite = new Date(Date.now() - botConfig.timeoutConversacion);
+  const result = await prisma.conversacion.updateMany({
+    where: { activa: true, lastActivity: { lt: fechaLimite } },
+    data: { activa: false },
+  });
+  if (result.count > 0) console.log(`✅ ${result.count} conversaciones inactivas limpiadas`);
+}
