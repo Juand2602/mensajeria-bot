@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { WhatsAppWebhookPayload } from '../types';
 import { whatsappBotService } from '../services/whatsapp/bot.service';
 import { mensajeriaService } from '../services/mensajeria.service';
+import { whatsappConfig } from '../config/whatsapp';
 
 const mensajesProcesados = new Set<string>();
 
@@ -10,9 +11,8 @@ export class WebhookController {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
-    const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN || 'mi_token_secreto';
 
-    if (mode === 'subscribe' && token === verifyToken) {
+    if (mode === 'subscribe' && token === whatsappConfig.verifyToken) {
       res.status(200).send(challenge);
     } else {
       res.sendStatus(403);
