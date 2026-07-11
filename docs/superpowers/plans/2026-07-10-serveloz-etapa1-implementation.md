@@ -2750,7 +2750,13 @@ router.post('/conversaciones/:telefono/mensajes', verificarAdmin, async (req, re
       return;
     }
 
-    await whatsappMessagesService.enviarMensaje(telefono, contenido);
+    try {
+      await whatsappMessagesService.enviarMensaje(telefono, contenido);
+    } catch (e: any) {
+      console.error('Error enviando mensaje manual por WhatsApp:', e.response?.data || e.message);
+      res.status(502).json({ error: 'No se pudo enviar el mensaje por WhatsApp. Intenta de nuevo.' });
+      return;
+    }
     await mensajeriaService.registrarSaliente(telefono, contenido, 'DUEÑO');
 
     const conversacion = await prisma.conversacion.findFirst({ where: { telefono, activa: true } });
