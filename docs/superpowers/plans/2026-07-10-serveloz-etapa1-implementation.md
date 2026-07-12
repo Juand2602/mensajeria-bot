@@ -151,8 +151,10 @@ TARIFA_POR_KM=800
 ADMINISTRADOR_TELEFONO=
 
 # ==================== PANEL DE ADMINISTRACIÓN ====================
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=admin
+# El servidor no arranca sin estas 3 variables (WHATSAPP_VERIFY_TOKEN
+# tampoco tiene valor por defecto) — no dejes estos placeholders tal cual.
+ADMIN_USERNAME=cambia_este_usuario
+ADMIN_PASSWORD=cambia_esta_contraseña
 JWT_SECRET=una_clave_secreta_muy_larga_y_segura
 ADMIN_PANEL_ENABLED=true
 
@@ -1018,11 +1020,18 @@ export class CarrerasService {
   }
 
   async asignarConductor(id: string, conductorId: string) {
-    return prisma.carrera.update({
-      where: { id },
+    // Guarda atómica: solo se puede asignar conductor a una carrera que
+    // todavía está pendiente (evita reabrir una carrera ya completada o
+    // cancelada), y da un error de dominio limpio en vez de dejar que
+    // Prisma lance su propio "record not found" si el id no existe.
+    const resultado = await prisma.carrera.updateMany({
+      where: { id, estado: 'PENDIENTE_ASIGNACION' },
       data: { conductorId, estado: 'ASIGNADA' },
-      include: { cliente: true, conductor: true },
     });
+    if (resultado.count === 0) {
+      throw new Error('Carrera no encontrada o ya no está pendiente de asignación');
+    }
+    return this.getById(id);
   }
 
   async cambiarEstado(id: string, estado: string, motivoCancelacion?: string) {
@@ -1067,7 +1076,16 @@ export class CarrerasService {
   }
 
   async actualizarEstadoPago(id: string, estadoPago: string) {
-    return prisma.carrera.update({ where: { id }, data: { estadoPago }, include: { cliente: true, conductor: true } });
+    // Mismo criterio que asignarConductor: solo carreras asignadas o
+    // completadas tienen un pago que registrar (una cancelada no).
+    const resultado = await prisma.carrera.updateMany({
+      where: { id, estado: { in: ['ASIGNADA', 'COMPLETADA'] } },
+      data: { estadoPago },
+    });
+    if (resultado.count === 0) {
+      throw new Error('Carrera no encontrada o no admite cambio de estado de pago en su estado actual');
+    }
+    return this.getById(id);
   }
 
   async getProgramadasPendientesDeAviso(antesDe: Date) {
