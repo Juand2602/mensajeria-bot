@@ -2817,7 +2817,7 @@ git commit -m "feat: API admin - conversaciones y chat manual"
 - Create: `src/admin/dashboard.html`
 
 **Interfaces:**
-- Produces: funciones globales `requireAuth()`, `logout()`, `authFetch(url, options)` (definidas en `auth.js`, cargadas vía `<script src="/admin/js/auth.js">`) — usadas por todas las páginas del panel de las Tasks 17-19. El token JWT se guarda en `localStorage` bajo la clave `token`.
+- Produces: funciones globales `requireAuth()`, `logout()`, `authFetch(url, options)`, `esc(valor)` (definidas en `auth.js`, cargadas vía `<script src="/admin/js/auth.js">`) — usadas por todas las páginas del panel de las Tasks 17-19. El token JWT se guarda en `localStorage` bajo la clave `token`. **`esc()` debe envolver cualquier valor proveniente de la API (nombre de cliente/conductor, direcciones, mensajes de chat, etc.) antes de interpolarlo en `innerHTML`** — esos valores se originan en texto que el cliente escribe por WhatsApp y no son de confianza; insertarlos sin escapar permite XSS almacenado contra la sesión del dueño en el panel.
 
 - [ ] **Step 1: Crear `src/admin/js/auth.js`**
 
@@ -2845,6 +2845,15 @@ async function authFetch(url, options = {}) {
     throw new Error('No autorizado');
   }
   return response;
+}
+
+// Escapa texto proveniente de datos de clientes/conductores (nombre, direcciones, etc.)
+// antes de insertarlo en innerHTML — esos valores vienen de lo que el cliente
+// escribe por WhatsApp y no son de confianza.
+function esc(valor) {
+  return String(valor).replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
 }
 ```
 
@@ -2985,8 +2994,8 @@ async function authFetch(url, options = {}) {
         : carreras.map(c => `
           <div class="flex justify-between items-center bg-gray-900 rounded-lg px-4 py-3">
             <div>
-              <div class="font-medium">${c.radicado} — ${c.cliente.nombre}</div>
-              <div class="text-gray-400 text-sm">${c.direccionRecogida} → ${c.direccionDestino}</div>
+              <div class="font-medium">${esc(c.radicado)} — ${esc(c.cliente.nombre)}</div>
+              <div class="text-gray-400 text-sm">${esc(c.direccionRecogida)} → ${esc(c.direccionDestino)}</div>
             </div>
             <div class="text-amber-400 font-semibold">$${c.precio.toLocaleString('es-CO')}</div>
           </div>
@@ -3106,7 +3115,7 @@ git commit -m "feat: panel admin - login, layout y dashboard"
       const conductores = await (await authFetch('/api/admin/conductores')).json();
       const select = document.getElementById('m_conductorId');
       select.innerHTML = '<option value="">Sin asignar todavía</option>' +
-        conductores.filter(c => c.activo).map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+        conductores.filter(c => c.activo).map(c => `<option value="${c.id}">${esc(c.nombre)}</option>`).join('');
       return conductores;
     }
 
@@ -3186,22 +3195,22 @@ git commit -m "feat: panel admin - login, layout y dashboard"
           <div class="bg-gray-800 rounded-xl border border-gray-700 p-4">
             <div class="flex justify-between items-start mb-2">
               <div>
-                <div class="font-medium">${c.radicado} — ${c.cliente.nombre} (${c.cliente.telefono})</div>
-                <div class="text-gray-400 text-sm">${c.tipoServicio} · ${c.direccionRecogida} → ${c.direccionDestino}</div>
-                <div class="text-gray-400 text-sm">${c.distanciaKm.toFixed(1)} km · $${c.precio.toLocaleString('es-CO')} · Pago: ${c.estadoPago}</div>
+                <div class="font-medium">${esc(c.radicado)} — ${esc(c.cliente.nombre)} (${esc(c.cliente.telefono)})</div>
+                <div class="text-gray-400 text-sm">${esc(c.tipoServicio)} · ${esc(c.direccionRecogida)} → ${esc(c.direccionDestino)}</div>
+                <div class="text-gray-400 text-sm">${c.distanciaKm.toFixed(1)} km · $${c.precio.toLocaleString('es-CO')} · Pago: ${esc(c.estadoPago)}</div>
               </div>
-              <span class="text-xs px-2 py-1 rounded-full bg-gray-900 border border-gray-700">${c.estado}</span>
+              <span class="text-xs px-2 py-1 rounded-full bg-gray-900 border border-gray-700">${esc(c.estado)}</span>
             </div>
             <div class="flex flex-wrap gap-2 items-center mt-2">
               ${c.estado === 'PENDIENTE_ASIGNACION' ? `
                 <select id="sel_${c.id}" class="bg-gray-900 border border-gray-700 rounded-lg px-2 py-1 text-sm">
                   <option value="">Elegir conductor...</option>
-                  ${conductores.filter(cd => cd.activo).map(cd => `<option value="${cd.id}">${cd.nombre}</option>`).join('')}
+                  ${conductores.filter(cd => cd.activo).map(cd => `<option value="${cd.id}">${esc(cd.nombre)}</option>`).join('')}
                 </select>
                 <button onclick="asignarConductor('${c.id}', document.getElementById('sel_${c.id}').value)" class="bg-amber-500 hover:bg-amber-600 text-gray-900 text-sm font-medium rounded-lg px-3 py-1">Asignar</button>
               ` : ''}
               ${c.estado === 'ASIGNADA' ? `
-                <span class="text-sm text-gray-300">Conductor: ${c.conductor ? c.conductor.nombre : '—'}</span>
+                <span class="text-sm text-gray-300">Conductor: ${c.conductor ? esc(c.conductor.nombre) : '—'}</span>
                 <button onclick="marcarCompletada('${c.id}')" class="bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg px-3 py-1">Marcar completada</button>
               ` : ''}
               ${['ASIGNADA', 'COMPLETADA'].includes(c.estado) ? `
@@ -3316,8 +3325,8 @@ git commit -m "feat: panel admin - gestión de carreras y creación manual"
       document.getElementById('lista').innerHTML = conductores.map(c => `
         <div class="flex justify-between items-center bg-gray-800 rounded-lg px-4 py-3 border border-gray-700">
           <div>
-            <div class="font-medium">${c.nombre}</div>
-            <div class="text-gray-400 text-sm">${c.telefono}</div>
+            <div class="font-medium">${esc(c.nombre)}</div>
+            <div class="text-gray-400 text-sm">${esc(c.telefono)}</div>
           </div>
           <button onclick="toggleActivo('${c.id}', ${c.activo})" class="text-sm rounded-lg px-3 py-1 border ${c.activo ? 'border-green-600 text-green-400' : 'border-gray-600 text-gray-500'}">
             ${c.activo ? 'Activo' : 'Inactivo'}
@@ -3383,8 +3392,8 @@ git commit -m "feat: panel admin - gestión de carreras y creación manual"
         ? '<div class="text-gray-500 text-sm">Sin resultados.</div>'
         : clientes.map(c => `
           <div class="bg-gray-800 rounded-lg px-4 py-3 border border-gray-700">
-            <div class="font-medium">${c.nombre}</div>
-            <div class="text-gray-400 text-sm">${c.telefono}</div>
+            <div class="font-medium">${esc(c.nombre)}</div>
+            <div class="text-gray-400 text-sm">${esc(c.telefono)}</div>
             ${c.descuentosDisponibles > 0 ? `<div class="text-amber-400 text-sm mt-1">🎉 ${c.descuentosDisponibles} descuento(s) de 20% disponible(s)</div>` : ''}
           </div>
         `).join('');
@@ -3563,14 +3572,23 @@ git commit -m "feat: panel admin - conductores, clientes y configuración de tar
     async function cargarLista() {
       const conversaciones = await (await authFetch('/api/admin/conversaciones')).json();
       document.getElementById('listaConversaciones').innerHTML = conversaciones.map(c => `
-        <button onclick="abrirConversacion('${c.telefono}', '${c.clienteNombre.replace(/'/g, "\\'")}')" class="w-full text-left p-4 hover:bg-gray-700 ${telefonoActivo === c.telefono ? 'bg-gray-700' : ''}">
+        <button data-telefono="${esc(c.telefono)}" data-nombre="${esc(c.clienteNombre)}" class="conversacion-item w-full text-left p-4 hover:bg-gray-700 ${telefonoActivo === c.telefono ? 'bg-gray-700' : ''}">
           <div class="flex justify-between items-center">
-            <span class="font-medium">${c.clienteNombre}</span>
+            <span class="font-medium">${esc(c.clienteNombre)}</span>
             ${c.modoManual ? '<span class="text-xs bg-amber-500 text-gray-900 px-2 py-0.5 rounded-full">Manual</span>' : ''}
           </div>
-          <div class="text-gray-400 text-sm truncate">${c.ultimoMensaje}</div>
+          <div class="text-gray-400 text-sm truncate">${esc(c.ultimoMensaje)}</div>
         </button>
       `).join('');
+
+      // Los botones usan data-attributes + addEventListener en vez de onclick
+      // con valores interpolados: un nombre de cliente con comillas podría
+      // romper un atributo onclick="..." e inyectar HTML/JS (doble contexto
+      // de escapado: atributo HTML + literal de string JS). data-attributes
+      // solo tienen un contexto de escapado (HTML), así que basta con esc().
+      document.querySelectorAll('.conversacion-item').forEach(btn => {
+        btn.addEventListener('click', () => abrirConversacion(btn.dataset.telefono, btn.dataset.nombre));
+      });
     }
 
     function renderMensaje(m) {
@@ -3578,8 +3596,8 @@ git commit -m "feat: panel admin - conductores, clientes y configuración de tar
       return `
         <div class="flex ${esCliente ? 'justify-start' : 'justify-end'}">
           <div class="max-w-xs rounded-lg px-3 py-2 text-sm ${esCliente ? 'bg-gray-700' : 'bg-amber-500 text-gray-900'}">
-            <div>${m.contenido}</div>
-            <div class="text-xs opacity-60 mt-1">${m.enviadoPor} · ${new Date(m.timestamp).toLocaleTimeString('es-CO')}</div>
+            <div>${esc(m.contenido)}</div>
+            <div class="text-xs opacity-60 mt-1">${esc(m.enviadoPor)} · ${new Date(m.timestamp).toLocaleTimeString('es-CO')}</div>
           </div>
         </div>
       `;
@@ -3591,7 +3609,7 @@ git commit -m "feat: panel admin - conductores, clientes y configuración de tar
       document.getElementById('chatMensajes').innerHTML = '';
       document.getElementById('chatFooter').classList.remove('hidden');
       document.getElementById('chatHeader').innerHTML = `
-        <span class="font-medium">${nombre} (${telefono})</span>
+        <span class="font-medium">${esc(nombre)} (${esc(telefono)})</span>
         <button onclick="toggleModoManual()" id="btnModo" class="text-xs border border-gray-600 rounded-full px-3 py-1">...</button>
       `;
       await cargarMensajes(true);

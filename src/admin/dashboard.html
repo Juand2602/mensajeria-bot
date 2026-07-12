@@ -76,8 +76,8 @@
         : carreras.map(c => `
           <div class="flex justify-between items-center bg-gray-900 rounded-lg px-4 py-3">
             <div>
-              <div class="font-medium">${c.radicado} — ${c.cliente.nombre}</div>
-              <div class="text-gray-400 text-sm">${c.direccionRecogida} → ${c.direccionDestino}</div>
+              <div class="font-medium">${esc(c.radicado)} — ${esc(c.cliente.nombre)}</div>
+              <div class="text-gray-400 text-sm">${esc(c.direccionRecogida)} → ${esc(c.direccionDestino)}</div>
             </div>
             <div class="text-amber-400 font-semibold">$${c.precio.toLocaleString('es-CO')}</div>
           </div>

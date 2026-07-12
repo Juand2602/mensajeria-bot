@@ -22,3 +22,12 @@ async function authFetch(url, options = {}) {
   }
   return response;
 }
+
+// Escapa texto proveniente de datos de clientes/conductores (nombre, direcciones, etc.)
+// antes de insertarlo en innerHTML — esos valores vienen de lo que el cliente
+// escribe por WhatsApp y no son de confianza.
+function esc(valor) {
+  return String(valor).replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}
