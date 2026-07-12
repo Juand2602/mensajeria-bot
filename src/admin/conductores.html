@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🛵 Conductores - Serveloz Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+  <nav class="bg-gray-800 border-b border-gray-700">
+    <div class="px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">🛵</span>
+        <span class="font-bold text-lg text-amber-400">Serveloz</span>
+      </div>
+      <div class="hidden md:flex items-center gap-4">
+        <a href="/admin/dashboard.html" class="text-gray-300 hover:text-white">Inicio</a>
+        <a href="/admin/carreras.html" class="text-gray-300 hover:text-white">Carreras</a>
+        <a href="/admin/conductores.html" class="text-amber-400 font-medium">Conductores</a>
+        <a href="/admin/clientes.html" class="text-gray-300 hover:text-white">Clientes</a>
+        <a href="/admin/conversaciones.html" class="text-gray-300 hover:text-white">Conversaciones</a>
+        <a href="/admin/config.html" class="text-gray-300 hover:text-white">Configuración</a>
+        <button onclick="logout()" class="text-red-400 hover:text-red-300 text-sm">Salir</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="max-w-4xl mx-auto px-6 py-8">
+    <h1 class="text-2xl font-bold mb-6">Conductores</h1>
+
+    <form id="formNuevo" class="flex flex-wrap gap-2 mb-6">
+      <input id="n_nombre" placeholder="Nombre" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 flex-1 min-w-[160px]" required>
+      <input id="n_telefono" placeholder="Teléfono (573001234567)" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 flex-1 min-w-[160px]" required>
+      <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-gray-900 font-semibold rounded-lg px-4 py-2">+ Agregar</button>
+    </form>
+
+    <div id="lista" class="space-y-2">
+      <div class="text-gray-500 text-sm">Cargando...</div>
+    </div>
+  </main>
+
+  <script src="/admin/js/auth.js"></script>
+  <script>
+    requireAuth();
+
+    document.getElementById('formNuevo').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await authFetch('/api/admin/conductores', {
+        method: 'POST',
+        body: JSON.stringify({
+          nombre: document.getElementById('n_nombre').value,
+          telefono: document.getElementById('n_telefono').value,
+        }),
+      });
+      document.getElementById('formNuevo').reset();
+      cargar();
+    });
+
+    async function toggleActivo(id, activoActual) {
+      await authFetch(`/api/admin/conductores/${id}`, { method: 'PUT', body: JSON.stringify({ activo: !activoActual }) });
+      cargar();
+    }
+
+    async function cargar() {
+      const conductores = await (await authFetch('/api/admin/conductores')).json();
+      document.getElementById('lista').innerHTML = conductores.map(c => `
+        <div class="flex justify-between items-center bg-gray-800 rounded-lg px-4 py-3 border border-gray-700">
+          <div>
+            <div class="font-medium">${esc(c.nombre)}</div>
+            <div class="text-gray-400 text-sm">${esc(c.telefono)}</div>
+          </div>
+          <button onclick="toggleActivo('${c.id}', ${c.activo})" class="text-sm rounded-lg px-3 py-1 border ${c.activo ? 'border-green-600 text-green-400' : 'border-gray-600 text-gray-500'}">
+            ${c.activo ? 'Activo' : 'Inactivo'}
+          </button>
+        </div>
+      `).join('');
+    }
+
+    cargar();
+  </script>
+</body>
+</html>
