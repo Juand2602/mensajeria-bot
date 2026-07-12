@@ -49,6 +49,31 @@ export class ClientesService {
     if (!cliente) cliente = await this.crear({ nombre, telefono });
     return cliente;
   }
+
+  private normalizarTelefono(texto: string): string {
+    const soloDigitos = texto.replace(/\D/g, '');
+    if (soloDigitos.length === 10 && soloDigitos.startsWith('3')) return `57${soloDigitos}`;
+    return soloDigitos;
+  }
+
+  // El bot le pide al cliente "nombre o número" de quien lo refirió. Un nombre
+  // nunca coincide con una búsqueda por teléfono, y un número escrito con
+  // espacios/guiones o sin el indicativo de país tampoco coincide con el
+  // formato exacto que guarda WhatsApp — por eso se normaliza el teléfono y,
+  // si no hay coincidencia, se intenta por nombre (solo si es inequívoco).
+  async buscarReferidor(query: string) {
+    const telefonoNormalizado = this.normalizarTelefono(query);
+    if (telefonoNormalizado) {
+      const porTelefono = await this.buscarPorTelefono(telefonoNormalizado);
+      if (porTelefono) return porTelefono;
+    }
+
+    const coincidencias = await prisma.cliente.findMany({
+      where: { nombre: { contains: query.trim(), mode: 'insensitive' } },
+      take: 2,
+    });
+    return coincidencias.length === 1 ? coincidencias[0] : null;
+  }
 }
 
 export const clientesService = new ClientesService();

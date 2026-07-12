@@ -123,9 +123,12 @@ export class WhatsAppBotService {
   private async manejarReferido(telefono: string, mensaje: string, contexto: ConversationContext, conversacionId: string) {
     if (!messageParser.esNegativo(mensaje)) {
       const cliente = await clientesService.buscarPorTelefono(telefono);
-      const referidor = await clientesService.buscarPorTelefono(mensaje.trim());
+      const referidor = await clientesService.buscarReferidor(mensaje);
       if (cliente && referidor && referidor.id !== cliente.id) {
         await prisma.cliente.update({ where: { id: cliente.id }, data: { referidoPorId: referidor.id } });
+        await mensajeriaService.enviarMensaje(telefono, '¡Gracias! Registramos quién te recomendó Serveloz 🎉');
+      } else if (cliente && !referidor) {
+        await mensajeriaService.enviarMensaje(telefono, 'No encontramos a esa persona en nuestro sistema, pero no hay problema, seguimos con tu pedido.');
       }
     }
     await this.enviarMenuTipoServicio(telefono);
