@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🛵 Conversaciones - Serveloz Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+  <nav class="bg-gray-800 border-b border-gray-700">
+    <div class="px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">🛵</span>
+        <span class="font-bold text-lg text-amber-400">Serveloz</span>
+      </div>
+      <div class="hidden md:flex items-center gap-4">
+        <a href="/admin/dashboard.html" class="text-gray-300 hover:text-white">Inicio</a>
+        <a href="/admin/carreras.html" class="text-gray-300 hover:text-white">Carreras</a>
+        <a href="/admin/conductores.html" class="text-gray-300 hover:text-white">Conductores</a>
+        <a href="/admin/clientes.html" class="text-gray-300 hover:text-white">Clientes</a>
+        <a href="/admin/conversaciones.html" class="text-amber-400 font-medium">Conversaciones</a>
+        <a href="/admin/config.html" class="text-gray-300 hover:text-white">Configuración</a>
+        <button onclick="logout()" class="text-red-400 hover:text-red-300 text-sm">Salir</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="max-w-6xl mx-auto px-4 py-6 flex gap-4" style="height: calc(100vh - 80px);">
+    <div class="w-72 flex-shrink-0 bg-gray-800 rounded-xl border border-gray-700 overflow-y-auto">
+      <div id="listaConversaciones" class="divide-y divide-gray-700">
+        <div class="text-gray-500 text-sm p-4">Cargando...</div>
+      </div>
+    </div>
+
+    <div class="flex-1 bg-gray-800 rounded-xl border border-gray-700 flex flex-col">
+      <div id="chatHeader" class="p-4 border-b border-gray-700 flex items-center justify-between">
+        <span class="text-gray-400 text-sm">Selecciona una conversación</span>
+      </div>
+      <div id="chatMensajes" class="flex-1 overflow-y-auto p-4 space-y-3"></div>
+      <div id="chatFooter" class="p-4 border-t border-gray-700 hidden">
+        <p id="avisoVentana" class="text-amber-400 text-xs mb-2 hidden">Han pasado más de 24h desde el último mensaje del cliente: no se puede enviar texto libre, se necesita una plantilla pre-aprobada.</p>
+        <form id="formEnviar" class="flex gap-2">
+          <input id="inputMensaje" placeholder="Escribe un mensaje..." class="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2">
+          <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-gray-900 font-semibold rounded-lg px-4 py-2">Enviar</button>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <script src="/admin/js/auth.js"></script>
+  <script>
+    requireAuth();
+
+    let telefonoActivo = null;
+    let ultimoTimestamp = null;
+    let pollingInterval = null;
+
+    async function cargarLista() {
+      const conversaciones = await (await authFetch('/api/admin/conversaciones')).json();
+      document.getElementById('listaConversaciones').innerHTML = conversaciones.map(c => `
+        <button data-telefono="${esc(c.telefono)}" data-nombre="${esc(c.clienteNombre)}" class="conversacion-item w-full text-left p-4 hover:bg-gray-700 ${telefonoActivo === c.telefono ? 'bg-gray-700' : ''}">
+          <div class="flex justify-between items-center">
+            <span class="font-medium">${esc(c.clienteNombre)}</span>
+            ${c.modoManual ? '<span class="text-xs bg-amber-500 text-gray-900 px-2 py-0.5 rounded-full">Manual</span>' : ''}
+          </div>
+          <div class="text-gray-400 text-sm truncate">${esc(c.ultimoMensaje)}</div>
+        </button>
+      `).join('');
+
+      // Los botones usan data-attributes + addEventListener en vez de onclick
+      // con valores interpolados: un nombre de cliente con comillas podría
+      // romper un atributo onclick="..." e inyectar HTML/JS (doble contexto
+      // de escapado: atributo HTML + literal de string JS). data-attributes
+      // solo tienen un contexto de escapado (HTML), así que basta con esc().
+      document.querySelectorAll('.conversacion-item').forEach(btn => {
+        btn.addEventListener('click', () => abrirConversacion(btn.dataset.telefono, btn.dataset.nombre));
+      });
+    }
+
+    function renderMensaje(m) {
+      const esCliente = m.direccion === 'ENTRANTE';
+      return `
+        <div class="flex ${esCliente ? 'justify-start' : 'justify-end'}">
+          <div class="max-w-xs rounded-lg px-3 py-2 text-sm ${esCliente ? 'bg-gray-700' : 'bg-amber-500 text-gray-900'}">
+            <div>${esc(m.contenido)}</div>
+            <div class="text-xs opacity-60 mt-1">${esc(m.enviadoPor)} · ${new Date(m.timestamp).toLocaleTimeString('es-CO')}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function abrirConversacion(telefono, nombre) {
+      telefonoActivo = telefono;
+      ultimoTimestamp = null;
+      document.getElementById('chatMensajes').innerHTML = '';
+      document.getElementById('chatFooter').classList.remove('hidden');
+      document.getElementById('chatHeader').innerHTML = `
+        <span class="font-medium">${esc(nombre)} (${esc(telefono)})</span>
+        <button onclick="toggleModoManual()" id="btnModo" class="text-xs border border-gray-600 rounded-full px-3 py-1">...</button>
+      `;
+      await cargarMensajes(true);
+      await cargarEstadoModo();
+      cargarLista();
+
+      if (pollingInterval) clearInterval(pollingInterval);
+      pollingInterval = setInterval(() => cargarMensajes(false), 10000);
+    }
+
+    async function cargarMensajes(esCargaInicial) {
+      if (!telefonoActivo) return;
+      const url = ultimoTimestamp
+        ? `/api/admin/conversaciones/${telefonoActivo}/mensajes?desde=${encodeURIComponent(ultimoTimestamp)}`
+        : `/api/admin/conversaciones/${telefonoActivo}/mensajes`;
+      const mensajes = await (await authFetch(url)).json();
+      if (mensajes.length > 0) {
+        const cont = document.getElementById('chatMensajes');
+        cont.innerHTML += mensajes.map(renderMensaje).join('');
+        cont.scrollTop = cont.scrollHeight;
+        ultimoTimestamp = mensajes[mensajes.length - 1].timestamp;
+
+        const ultimoEntrante = [...mensajes].reverse().find(m => m.direccion === 'ENTRANTE');
+        if (ultimoEntrante) actualizarAvisoVentana(new Date(ultimoEntrante.timestamp));
+      } else if (esCargaInicial) {
+        actualizarAvisoVentana(null);
+      }
+    }
+
+    function actualizarAvisoVentana(fechaUltimoEntrante) {
+      const aviso = document.getElementById('avisoVentana');
+      const dentroDeVentana = fechaUltimoEntrante && (Date.now() - fechaUltimoEntrante.getTime()) < 24 * 60 * 60 * 1000;
+      aviso.classList.toggle('hidden', !!dentroDeVentana);
+    }
+
+    async function cargarEstadoModo() {
+      const conversaciones = await (await authFetch('/api/admin/conversaciones')).json();
+      const actual = conversaciones.find(c => c.telefono === telefonoActivo);
+      const btn = document.getElementById('btnModo');
+      if (btn) btn.textContent = actual && actual.modoManual ? 'Reanudar bot' : 'Tomar control manual';
+    }
+
+    async function toggleModoManual() {
+      const conversaciones = await (await authFetch('/api/admin/conversaciones')).json();
+      const actual = conversaciones.find(c => c.telefono === telefonoActivo);
+      const nuevoModo = !(actual && actual.modoManual);
+      await authFetch(`/api/admin/conversaciones/${telefonoActivo}/modo`, { method: 'PUT', body: JSON.stringify({ modoManual: nuevoModo }) });
+      cargarEstadoModo();
+    }
+
+    document.getElementById('formEnviar').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const input = document.getElementById('inputMensaje');
+      const contenido = input.value.trim();
+      if (!contenido || !telefonoActivo) return;
+
+      const response = await authFetch(`/api/admin/conversaciones/${telefonoActivo}/mensajes`, {
+        method: 'POST',
+        body: JSON.stringify({ contenido }),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        alert(data.error || 'No se pudo enviar el mensaje');
+        return;
+      }
+      input.value = '';
+      await cargarMensajes(false);
+      cargarEstadoModo();
+    });
+
+    cargarLista();
+    setInterval(cargarLista, 15000);
+  </script>
+</body>
+</html>
