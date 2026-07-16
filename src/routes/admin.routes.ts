@@ -4,6 +4,7 @@ import { carrerasService } from '../services/carreras.service';
 import { clientesService } from '../services/clientes.service';
 import { conductoresService } from '../services/conductores.service';
 import { configuracionService } from '../services/configuracion.service';
+import { tarifaMunicipioService } from '../services/tarifa-municipio.service';
 import { radarService } from '../services/radar.service';
 import { notificacionesService } from '../services/notificaciones.service';
 import { whatsappMessagesService } from '../services/whatsapp/messages.service';
@@ -200,6 +201,21 @@ router.put('/config', verificarAdmin, async (req, res) => {
   try {
     const config = await configuracionService.actualizar(req.body);
     res.json(config);
+  } catch (e: any) { res.status(400).json({ error: e.message }); }
+});
+
+// ==================== TARIFAS POR MUNICIPIO ====================
+router.get('/tarifas-municipio', verificarAdmin, async (_req, res) => {
+  try {
+    const tarifas = await tarifaMunicipioService.obtenerTodas();
+    res.json(tarifas);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.put('/tarifas-municipio/:municipio', verificarAdmin, async (req, res) => {
+  try {
+    const tarifa = await tarifaMunicipioService.actualizar(req.params.municipio, req.body.tarifaPorKm);
+    res.json(tarifa);
   } catch (e: any) { res.status(400).json({ error: e.message }); }
 });
 
