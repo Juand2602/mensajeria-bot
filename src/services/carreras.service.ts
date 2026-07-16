@@ -44,7 +44,7 @@ export class CarrerasService {
     });
     const descuentoAplicado = descuento.count > 0;
     if (descuentoAplicado) {
-      precio = Math.round(precio * 0.8);
+      precio = Math.round((precio * 0.8) / 100) * 100;
     }
 
     const carrera = await prisma.carrera.create({

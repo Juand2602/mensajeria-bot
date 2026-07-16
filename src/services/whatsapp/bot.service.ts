@@ -257,7 +257,7 @@ export class WhatsAppBotService {
       const cliente = await clientesService.buscarPorTelefono(telefono);
       const conDescuento = !!cliente && cliente.descuentosDisponibles > 0;
       let precio = await carrerasService.calcularPrecio(distanciaKm, contexto.destino!.lat!, contexto.destino!.lng!);
-      if (conDescuento) precio = Math.round(precio * 0.8);
+      if (conDescuento) precio = Math.round((precio * 0.8) / 100) * 100;
       contexto.precio = precio;
 
       await mensajeriaService.enviarMensajeConBotones(

@@ -9,7 +9,9 @@ automáticas, agendamiento anticipado y sistema de referidos.
 - Node.js 18+
 - PostgreSQL
 - Cuenta de WhatsApp Cloud API (Meta) con número verificado
-- Cuenta de Radar (radar.io) para geocoding y distancia
+- Geocoding y distancia: usa Nominatim/OSRM (públicos, sin API key) por defecto en
+  `src/services/radar.service.ts` — solo para pruebas, ver nota en el archivo. Para
+  producción, reemplazar por un proveedor con key propia (Radar, Mapbox, Google).
 
 ## Configuración local
 
@@ -29,7 +31,6 @@ Ver `.env.example` para la lista completa. Las más importantes:
 
 - `DATABASE_URL`: conexión a PostgreSQL.
 - `WHATSAPP_TOKEN` / `WHATSAPP_PHONE_ID` / `WHATSAPP_VERIFY_TOKEN`: credenciales de Meta.
-- `RADAR_API_KEY`: API key de radar.io.
 - `ADMINISTRADOR_TELEFONO`: número del dueño (formato `573001234567`) que recibe los
   avisos de nuevas solicitudes.
 - `ADMIN_USERNAME` / `ADMIN_PASSWORD` / `JWT_SECRET`: acceso al panel.
