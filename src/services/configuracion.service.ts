@@ -6,17 +6,16 @@ export class ConfiguracionService {
     const config = await prisma.configuracion.findUnique({ where: { id: 'default' } });
     if (config) return config;
     return prisma.configuracion.create({
-      data: { id: 'default', tarifaBase: servelozConfig.tarifaBase, tarifaPorKm: servelozConfig.tarifaPorKm },
+      data: { id: 'default', tarifaMinima: servelozConfig.tarifaMinima },
     });
   }
 
-  async actualizar(data: { tarifaBase?: number; tarifaPorKm?: number }) {
+  async actualizar(data: { tarifaMinima?: number }) {
     await this.obtener();
     return prisma.configuracion.update({
       where: { id: 'default' },
       data: {
-        ...(data.tarifaBase !== undefined && { tarifaBase: data.tarifaBase }),
-        ...(data.tarifaPorKm !== undefined && { tarifaPorKm: data.tarifaPorKm }),
+        ...(data.tarifaMinima !== undefined && { tarifaMinima: data.tarifaMinima }),
       },
     });
   }

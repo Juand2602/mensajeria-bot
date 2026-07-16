@@ -15,12 +15,7 @@ export const whatsappConfig = {
 
 export const servelozConfig = {
   nombre: process.env.SERVELOZ_NOMBRE || 'Serveloz',
-  tarifaBase: parseFloat(process.env.TARIFA_BASE || '3000'),
-  tarifaPorKm: parseFloat(process.env.TARIFA_POR_KM || '800'),
-};
-
-export const radarConfig = {
-  apiKey: process.env.RADAR_API_KEY || '',
+  tarifaMinima: parseFloat(process.env.TARIFA_MINIMA || '3300'),
 };
 
 export const botConfig = {

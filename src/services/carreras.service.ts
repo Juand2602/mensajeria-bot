@@ -1,6 +1,8 @@
 import prisma from '../config/database';
 import { configuracionService } from './configuracion.service';
 import { generarRadicado } from './whatsapp/templates';
+import { municipioMasCercano } from './municipios';
+import { tarifaMunicipioService } from './tarifa-municipio.service';
 
 export interface CrearCarreraInput {
   clienteId: string;
@@ -18,16 +20,19 @@ export interface CrearCarreraInput {
 }
 
 export class CarrerasService {
-  async calcularPrecio(distanciaKm: number): Promise<number> {
+  async calcularPrecio(distanciaKm: number, destinoLat: number, destinoLng: number): Promise<number> {
     const config = await configuracionService.obtener();
-    return Math.round(config.tarifaBase + config.tarifaPorKm * distanciaKm);
+    const municipio = municipioMasCercano(destinoLat, destinoLng);
+    const tarifaPorKm = await tarifaMunicipioService.obtenerTarifaPorKm(municipio);
+    const precioBruto = Math.max(config.tarifaMinima, tarifaPorKm * distanciaKm);
+    return Math.round(precioBruto / 100) * 100;
   }
 
   async create(data: CrearCarreraInput) {
     const cliente = await prisma.cliente.findUnique({ where: { id: data.clienteId } });
     if (!cliente) throw new Error('Cliente no encontrado');
 
-    let precio = await this.calcularPrecio(data.distanciaKm);
+    let precio = await this.calcularPrecio(data.distanciaKm, data.destinoLat, data.destinoLng);
 
     // Decremento condicionado atómicamente a nivel de base de datos: si dos
     // solicitudes concurrentes del mismo cliente intentaran usar el mismo

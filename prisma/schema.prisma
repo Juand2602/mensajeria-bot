@@ -113,9 +113,15 @@ model Conversacion {
 
 // ==================== CONFIGURACIÓN (fila única, editable desde el panel) ====================
 model Configuracion {
-  id          String   @id @default("default")
-  tarifaBase  Float    @default(3000)
-  tarifaPorKm Float    @default(800)
+  id           String   @id @default("default")
+  tarifaMinima Float    @default(3300)
+  updatedAt    DateTime @updatedAt
+}
+
+// ==================== TARIFA POR KM SEGÚN MUNICIPIO DE DESTINO ====================
+model TarifaMunicipio {
+  municipio   String   @id // BUCARAMANGA | FLORIDABLANCA | GIRON | PIEDECUESTA
+  tarifaPorKm Float
   updatedAt   DateTime @updatedAt
 }
 
