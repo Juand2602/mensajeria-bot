@@ -22,6 +22,20 @@
         <a href="/admin/config.html" class="text-gray-300 hover:text-white">Configuración</a>
         <button onclick="logout()" class="text-red-400 hover:text-red-300 text-sm">Salir</button>
       </div>
+      <button id="btnMenuMobile" class="md:hidden p-2 -mr-2 text-gray-300" aria-label="Abrir menú" aria-expanded="false">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+        </svg>
+      </button>
+    </div>
+    <div id="menuMobile" class="hidden md:hidden border-t border-gray-700 px-4 py-2 space-y-1">
+      <a href="/admin/dashboard.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Inicio</a>
+      <a href="/admin/carreras.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Carreras</a>
+      <a href="/admin/conductores.html" class="block px-2 py-2 rounded-lg text-amber-400 font-medium">Conductores</a>
+      <a href="/admin/clientes.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Clientes</a>
+      <a href="/admin/conversaciones.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Conversaciones</a>
+      <a href="/admin/config.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Configuración</a>
+      <button onclick="logout()" class="block w-full text-left px-2 py-2 rounded-lg text-red-400 hover:bg-gray-700">Salir</button>
     </div>
   </nav>
 
@@ -42,6 +56,7 @@
   <script src="/admin/js/auth.js"></script>
   <script>
     requireAuth();
+    initMobileNav();
 
     document.getElementById('formNuevo').addEventListener('submit', async (e) => {
       e.preventDefault();

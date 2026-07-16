@@ -13,6 +13,17 @@ function logout() {
   window.location.href = '/admin/index.html';
 }
 
+function initMobileNav() {
+  const btn = document.getElementById('btnMenuMobile');
+  const menu = document.getElementById('menuMobile');
+  if (!btn || !menu) return;
+  btn.addEventListener('click', () => {
+    const seVaAAbrir = menu.classList.contains('hidden');
+    menu.classList.toggle('hidden');
+    btn.setAttribute('aria-expanded', String(seVaAAbrir));
+  });
+}
+
 async function authFetch(url, options = {}) {
   const headers = { ...(options.headers || {}), Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' };
   const response = await fetch(url, { ...options, headers });
