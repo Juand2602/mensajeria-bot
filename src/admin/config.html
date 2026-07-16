@@ -22,6 +22,20 @@
         <a href="/admin/config.html" class="text-amber-400 font-medium">Configuración</a>
         <button onclick="logout()" class="text-red-400 hover:text-red-300 text-sm">Salir</button>
       </div>
+      <button id="btnMenuMobile" class="md:hidden p-2 -mr-2 text-gray-300" aria-label="Abrir menú" aria-expanded="false">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+        </svg>
+      </button>
+    </div>
+    <div id="menuMobile" class="hidden md:hidden border-t border-gray-700 px-4 py-2 space-y-1">
+      <a href="/admin/dashboard.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Inicio</a>
+      <a href="/admin/carreras.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Carreras</a>
+      <a href="/admin/conductores.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Conductores</a>
+      <a href="/admin/clientes.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Clientes</a>
+      <a href="/admin/conversaciones.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Conversaciones</a>
+      <a href="/admin/config.html" class="block px-2 py-2 rounded-lg text-amber-400 font-medium">Configuración</a>
+      <button onclick="logout()" class="block w-full text-left px-2 py-2 rounded-lg text-red-400 hover:bg-gray-700">Salir</button>
     </div>
   </nav>
 
@@ -30,13 +44,32 @@
 
     <form id="form" class="space-y-4 bg-gray-800 rounded-xl border border-gray-700 p-6">
       <div>
-        <label class="block text-sm text-gray-400 mb-1">Tarifa base ($)</label>
-        <input id="tarifaBase" type="number" step="1" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2" required>
+        <label class="block text-sm text-gray-400 mb-1">Tarifa mínima ($)</label>
+        <input id="tarifaMinima" type="number" step="1" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2" required>
       </div>
-      <div>
-        <label class="block text-sm text-gray-400 mb-1">Tarifa por km ($)</label>
-        <input id="tarifaPorKm" type="number" step="1" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2" required>
+
+      <div class="border-t border-gray-700 pt-4">
+        <p class="text-sm text-gray-400 mb-2">Tarifa por km según municipio de destino</p>
+        <div class="space-y-2">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Bucaramanga</label>
+            <input id="tarifa_BUCARAMANGA" type="number" step="1" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2" required>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Floridablanca</label>
+            <input id="tarifa_FLORIDABLANCA" type="number" step="1" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2" required>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Girón</label>
+            <input id="tarifa_GIRON" type="number" step="1" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2" required>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Piedecuesta</label>
+            <input id="tarifa_PIEDECUESTA" type="number" step="1" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2" required>
+          </div>
+        </div>
       </div>
+
       <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-gray-900 font-semibold rounded-lg py-2">Guardar</button>
       <p id="mensaje" class="text-sm hidden"></p>
     </form>
@@ -45,25 +78,46 @@
   <script src="/admin/js/auth.js"></script>
   <script>
     requireAuth();
+    initMobileNav();
+
+    const MUNICIPIOS = ['BUCARAMANGA', 'FLORIDABLANCA', 'GIRON', 'PIEDECUESTA'];
 
     async function cargar() {
       const config = await (await authFetch('/api/admin/config')).json();
-      document.getElementById('tarifaBase').value = config.tarifaBase;
-      document.getElementById('tarifaPorKm').value = config.tarifaPorKm;
+      document.getElementById('tarifaMinima').value = config.tarifaMinima;
+
+      const tarifas = await (await authFetch('/api/admin/tarifas-municipio')).json();
+      tarifas.forEach(t => {
+        const input = document.getElementById(`tarifa_${t.municipio}`);
+        if (input) input.value = t.tarifaPorKm;
+      });
     }
 
     document.getElementById('form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const mensaje = document.getElementById('mensaje');
-      await authFetch('/api/admin/config', {
-        method: 'PUT',
-        body: JSON.stringify({
-          tarifaBase: parseFloat(document.getElementById('tarifaBase').value),
-          tarifaPorKm: parseFloat(document.getElementById('tarifaPorKm').value),
-        }),
-      });
-      mensaje.textContent = 'Guardado correctamente.';
-      mensaje.className = 'text-green-400 text-sm';
+      mensaje.classList.add('hidden');
+
+      try {
+        await authFetch('/api/admin/config', {
+          method: 'PUT',
+          body: JSON.stringify({ tarifaMinima: parseFloat(document.getElementById('tarifaMinima').value) }),
+        });
+
+        for (const municipio of MUNICIPIOS) {
+          const tarifaPorKm = parseFloat(document.getElementById(`tarifa_${municipio}`).value);
+          await authFetch(`/api/admin/tarifas-municipio/${municipio}`, {
+            method: 'PUT',
+            body: JSON.stringify({ tarifaPorKm }),
+          });
+        }
+
+        mensaje.textContent = 'Guardado correctamente.';
+        mensaje.className = 'text-green-400 text-sm';
+      } catch (err) {
+        mensaje.textContent = 'No se pudo guardar. Intenta de nuevo.';
+        mensaje.className = 'text-red-400 text-sm';
+      }
     });
 
     cargar();
