@@ -5,7 +5,7 @@ import { clientesService } from '../services/clientes.service';
 import { conductoresService } from '../services/conductores.service';
 import { configuracionService } from '../services/configuracion.service';
 import { tarifaMunicipioService } from '../services/tarifa-municipio.service';
-import { radarService } from '../services/radar.service';
+import { mapboxService } from '../services/mapbox.service';
 import { notificacionesService } from '../services/notificaciones.service';
 import { whatsappMessagesService } from '../services/whatsapp/messages.service';
 import { mensajeriaService } from '../services/mensajeria.service';
@@ -71,14 +71,14 @@ router.post('/carreras/manual', verificarAdmin, async (req, res) => {
 
     const cliente = await clientesService.obtenerOCrear(clienteTelefono, clienteNombre);
 
-    const recogida = await radarService.geocodificar(direccionRecogida);
-    const destino = await radarService.geocodificar(direccionDestino);
+    const recogida = await mapboxService.geocodificar(direccionRecogida);
+    const destino = await mapboxService.geocodificar(direccionDestino);
     if (!recogida || !destino) {
       res.status(400).json({ error: 'No se pudo geocodificar la dirección de recogida o destino' });
       return;
     }
 
-    const distanciaKm = await radarService.calcularDistanciaKm(
+    const distanciaKm = await mapboxService.calcularDistanciaKm(
       { lat: recogida.lat, lng: recogida.lng },
       { lat: destino.lat, lng: destino.lng }
     );

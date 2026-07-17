@@ -1,6 +1,11 @@
 export const MUNICIPIOS = ['BUCARAMANGA', 'FLORIDABLANCA', 'GIRON', 'PIEDECUESTA'] as const;
 export type Municipio = (typeof MUNICIPIOS)[number];
 
+// Bounding box (minLon,minLat,maxLon,maxLat) que envuelve los 4 municipios del área
+// metropolitana de Bucaramanga con margen. Se usa para acotar el geocoding a esta
+// zona (parámetro `bbox` de Mapbox) y evitar resultados de otras partes del país.
+export const AREA_METROPOLITANA_BBOX = '-73.22,6.94,-73.00,7.20';
+
 // Puntos centrales aproximados (parque/centro urbano) de cada municipio del área
 // metropolitana de Bucaramanga. Solo se usan para decidir "a cuál de los 4 pertenece
 // esta carrera", no para calcular distancia de ruta real.

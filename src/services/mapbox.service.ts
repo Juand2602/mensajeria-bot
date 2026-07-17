@@ -1,13 +1,8 @@
 import axios from 'axios';
+import { mapboxConfig } from '../config/whatsapp';
+import { AREA_METROPOLITANA_BBOX } from './municipios';
 
-// Nominatim/OSRM en vez de Radar: Radar pasó a ser 100% sales-gated (signup redirige a
-// agendar demo, exige correo corporativo). Estos son servidores públicos gratuitos de
-// OpenStreetMap sin API key, pensados solo para pruebas: Nominatim limita a 1 req/seg
-// y exige un User-Agent identificable; el servidor demo de OSRM no tiene SLA. Para
-// producción hay que volver a un proveedor con key propia (Radar, Mapbox, Google).
-const NOMINATIM_BASE_URL = 'https://nominatim.openstreetmap.org';
-const OSRM_BASE_URL = 'https://router.project-osrm.org';
-const USER_AGENT = 'Serveloz-Bot/1.0 (pruebas; contacto)';
+const MAPBOX_BASE_URL = 'https://api.mapbox.com';
 
 export interface CoordenadasGeocoded {
   lat: number;
@@ -15,25 +10,56 @@ export interface CoordenadasGeocoded {
   direccionFormateada: string;
 }
 
-export class RadarService {
+export class MapboxService {
+  // La Geocoding API "clásica" (v5/v6) de Mapbox dejó de indexar POIs (centros
+  // comerciales, negocios, parques con nombre propio) — solo resuelve bien
+  // direcciones estructuradas (carrera/calle). La Search Box API sí conserva
+  // datos de POI y es la reemplazante recomendada por Mapbox; su endpoint
+  // `/forward` funciona como una consulta suelta (sin session token, facturado
+  // por request) igual que un geocode clásico, así que cubre ambos casos.
   async geocodificar(direccionTexto: string): Promise<CoordenadasGeocoded | null> {
     try {
-      const response = await axios.get(`${NOMINATIM_BASE_URL}/search`, {
-        headers: { 'User-Agent': USER_AGENT },
-        params: { q: direccionTexto, countrycodes: 'co', format: 'json', limit: 1 },
+      const response = await axios.get(`${MAPBOX_BASE_URL}/search/searchbox/v1/forward`, {
+        params: {
+          q: direccionTexto,
+          access_token: mapboxConfig.accessToken,
+          country: 'co',
+          bbox: AREA_METROPOLITANA_BBOX,
+          language: 'es',
+          limit: 1,
+        },
         timeout: 10000,
       });
-      const resultados = response.data;
-      if (!resultados || resultados.length === 0) return null;
+      const mejor = response.data?.features?.[0];
+      if (!mejor) return null;
 
-      const mejor = resultados[0];
+      const [lng, lat] = mejor.geometry.coordinates;
+      const propiedades = mejor.properties;
       return {
-        lat: parseFloat(mejor.lat),
-        lng: parseFloat(mejor.lon),
-        direccionFormateada: mejor.display_name || direccionTexto,
+        lat,
+        lng,
+        direccionFormateada: propiedades.full_address || propiedades.place_formatted || propiedades.name || direccionTexto,
       };
     } catch (error: any) {
-      console.error('Error geocodificando con Nominatim:', error.response?.data || error.message);
+      console.error('Error geocodificando con Mapbox:', error.response?.data || error.message);
+      return null;
+    }
+  }
+
+  // Usado cuando el cliente comparte su ubicación GPS actual (no un lugar buscado
+  // en WhatsApp, que ya trae su propio nombre/dirección) — convierte lat/lng en
+  // una dirección legible para mostrar al dueño/conductor en vez de coordenadas.
+  async reverseGeocodificar(lat: number, lng: number): Promise<string | null> {
+    try {
+      const response = await axios.get(`${MAPBOX_BASE_URL}/search/searchbox/v1/reverse`, {
+        params: { longitude: lng, latitude: lat, access_token: mapboxConfig.accessToken, language: 'es' },
+        timeout: 10000,
+      });
+      const mejor = response.data?.features?.[0];
+      if (!mejor) return null;
+      return mejor.properties?.full_address || mejor.properties?.place_formatted || null;
+    } catch (error: any) {
+      console.error('Error en reverse geocoding con Mapbox:', error.response?.data || error.message);
       return null;
     }
   }
@@ -41,19 +67,18 @@ export class RadarService {
   async calcularDistanciaKm(origen: { lat: number; lng: number }, destino: { lat: number; lng: number }): Promise<number> {
     try {
       const coords = `${origen.lng},${origen.lat};${destino.lng},${destino.lat}`;
-      const response = await axios.get(`${OSRM_BASE_URL}/route/v1/driving/${coords}`, {
-        headers: { 'User-Agent': USER_AGENT },
-        params: { overview: 'false' },
+      const response = await axios.get(`${MAPBOX_BASE_URL}/directions/v5/mapbox/driving/${coords}`, {
+        params: { access_token: mapboxConfig.accessToken, overview: 'false' },
         timeout: 10000,
       });
       const distanciaMetros = response.data?.routes?.[0]?.distance;
-      if (typeof distanciaMetros !== 'number') throw new Error('Respuesta de OSRM sin distancia válida');
+      if (typeof distanciaMetros !== 'number') throw new Error('Respuesta de Mapbox sin distancia válida');
       return distanciaMetros / 1000;
     } catch (error: any) {
-      console.error('Error calculando distancia con OSRM:', error.response?.data || error.message);
+      console.error('Error calculando distancia con Mapbox:', error.response?.data || error.message);
       throw new Error('No se pudo calcular la distancia de la ruta');
     }
   }
 }
 
-export const radarService = new RadarService();
+export const mapboxService = new MapboxService();
