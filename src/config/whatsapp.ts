@@ -18,6 +18,16 @@ export const servelozConfig = {
   tarifaMinima: parseFloat(process.env.TARIFA_MINIMA || '3300'),
 };
 
+export const pagoConfig = {
+  // Número de Nequi/Llave a mostrar en el chat, opcional — si no se configura,
+  // el bot solo lista los métodos aceptados sin un número específico.
+  numeroNequiLlave: process.env.PAGO_NEQUI_LLAVE_NUMERO || '',
+};
+
+export const mapboxConfig = {
+  accessToken: requireEnv('MAPBOX_ACCESS_TOKEN'),
+};
+
 export const botConfig = {
   timeoutConversacion: parseInt(process.env.TIMEOUT_CONVERSACION || '300000'),
   avisoProgramadaMinutosAntes: parseInt(process.env.AVISO_PROGRAMADA_MINUTOS_ANTES || '30'),
