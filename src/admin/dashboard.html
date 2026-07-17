@@ -5,16 +5,41 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>🛵 Dashboard - Serveloz Admin</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: { extend: {
+        colors: {
+          brand: {
+            orange: '#F0872E', 'orange-dark': '#D9691A',
+            blue: '#29A8E0', 'blue-dark': '#1C8FC7',
+          },
+          canvas: '#0A0A0B',
+          surface: '#17171A',
+          line: '#26262A',
+        },
+        fontFamily: { display: ['"Barlow Condensed"', 'sans-serif'] },
+      } },
+    };
+  </script>
+  <style>
+    input:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible {
+      outline: 2px solid #F0872E;
+      outline-offset: 2px;
+    }
+  </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen">
-  <nav class="bg-gray-800 border-b border-gray-700">
+<body class="bg-canvas text-white min-h-screen">
+  <nav class="bg-surface border-b border-line">
     <div class="px-4 py-3 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <span class="text-2xl">🛵</span>
-        <span class="font-bold text-lg text-amber-400">Serveloz</span>
-      </div>
+      <a href="/admin/dashboard.html" class="flex items-center gap-2.5">
+        <img src="/admin/img/logo-icon.png" alt="Serveloz" class="h-8 w-auto">
+        <span class="font-display font-bold text-xl tracking-wide text-brand-orange">SERVELOZ</span>
+      </a>
       <div class="hidden md:flex items-center gap-4">
-        <a href="/admin/dashboard.html" class="text-amber-400 font-medium">Inicio</a>
+        <a href="/admin/dashboard.html" class="text-brand-orange font-medium">Inicio</a>
         <a href="/admin/carreras.html" class="text-gray-300 hover:text-white">Carreras</a>
         <a href="/admin/conductores.html" class="text-gray-300 hover:text-white">Conductores</a>
         <a href="/admin/clientes.html" class="text-gray-300 hover:text-white">Clientes</a>
@@ -28,43 +53,43 @@
         </svg>
       </button>
     </div>
-    <div id="menuMobile" class="hidden md:hidden border-t border-gray-700 px-4 py-2 space-y-1">
-      <a href="/admin/dashboard.html" class="block px-2 py-2 rounded-lg text-amber-400 font-medium">Inicio</a>
-      <a href="/admin/carreras.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Carreras</a>
-      <a href="/admin/conductores.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Conductores</a>
-      <a href="/admin/clientes.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Clientes</a>
-      <a href="/admin/conversaciones.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Conversaciones</a>
-      <a href="/admin/config.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Configuración</a>
-      <button onclick="logout()" class="block w-full text-left px-2 py-2 rounded-lg text-red-400 hover:bg-gray-700">Salir</button>
+    <div id="menuMobile" class="hidden md:hidden border-t border-line px-4 py-2 space-y-1">
+      <a href="/admin/dashboard.html" class="block px-2 py-2 rounded-lg text-brand-orange font-medium">Inicio</a>
+      <a href="/admin/carreras.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-line hover:text-white">Carreras</a>
+      <a href="/admin/conductores.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-line hover:text-white">Conductores</a>
+      <a href="/admin/clientes.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-line hover:text-white">Clientes</a>
+      <a href="/admin/conversaciones.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-line hover:text-white">Conversaciones</a>
+      <a href="/admin/config.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-line hover:text-white">Configuración</a>
+      <button onclick="logout()" class="block w-full text-left px-2 py-2 rounded-lg text-red-400 hover:bg-line">Salir</button>
     </div>
   </nav>
 
   <main class="max-w-6xl mx-auto px-6 py-8">
-    <h1 class="text-2xl font-bold mb-6">Panel Principal</h1>
+    <h1 class="text-3xl font-display font-bold uppercase tracking-wide mb-6">Panel Principal</h1>
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-      <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
-        <div class="text-3xl font-bold text-amber-400" id="carrerasHoy">--</div>
+      <div class="bg-surface rounded-xl p-5 border border-line">
+        <div class="text-4xl font-display font-bold text-brand-orange" id="carrerasHoy">--</div>
         <div class="text-gray-400 text-sm mt-1">Carreras hoy</div>
       </div>
-      <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
-        <div class="text-3xl font-bold text-green-400" id="carrerasPendientes">--</div>
+      <div class="bg-surface rounded-xl p-5 border border-line">
+        <div class="text-4xl font-display font-bold text-brand-blue" id="carrerasPendientes">--</div>
         <div class="text-gray-400 text-sm mt-1">Carreras pendientes</div>
       </div>
-      <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
-        <div class="text-3xl font-bold text-blue-400" id="totalConductores">--</div>
+      <div class="bg-surface rounded-xl p-5 border border-line">
+        <div class="text-4xl font-display font-bold text-brand-orange" id="totalConductores">--</div>
         <div class="text-gray-400 text-sm mt-1">Conductores activos</div>
       </div>
-      <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
-        <div class="text-3xl font-bold text-purple-400" id="totalClientes">--</div>
+      <div class="bg-surface rounded-xl p-5 border border-line">
+        <div class="text-4xl font-display font-bold text-brand-blue" id="totalClientes">--</div>
         <div class="text-gray-400 text-sm mt-1">Clientes registrados</div>
       </div>
     </div>
 
-    <div class="bg-gray-800 rounded-xl border border-gray-700 p-6">
+    <div class="bg-surface rounded-xl border border-line p-6">
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-semibold">Carreras pendientes de asignar</h2>
-        <a href="/admin/carreras.html" class="text-amber-400 text-sm hover:underline">Ver todas →</a>
+        <a href="/admin/carreras.html" class="text-brand-orange text-sm hover:underline">Ver todas →</a>
       </div>
       <div id="listaCarreras" class="space-y-3">
         <div class="text-gray-500 text-sm">Cargando...</div>
@@ -89,12 +114,22 @@
       cont.innerHTML = carreras.length === 0
         ? '<div class="text-gray-500 text-sm">No hay carreras pendientes.</div>'
         : carreras.map(c => `
-          <div class="flex justify-between items-center bg-gray-900 rounded-lg px-4 py-3">
-            <div>
-              <div class="font-medium">${esc(c.radicado)} — ${esc(c.cliente.nombre)}</div>
-              <div class="text-gray-400 text-sm">${esc(c.direccionRecogida)} → ${esc(c.direccionDestino)}</div>
+          <div class="flex justify-between items-start gap-3 bg-canvas rounded-lg px-4 py-3">
+            <div class="min-w-0 flex-1">
+              <div class="font-medium truncate">${esc(c.radicado)} — ${esc(c.cliente.nombre)}</div>
+              <div class="flex gap-2.5 mt-2">
+                <div class="flex flex-col items-center">
+                  <span class="w-2 h-2 rounded-full border-2 border-brand-blue bg-canvas shrink-0 mt-1"></span>
+                  <span class="w-px flex-1 bg-line my-0.5"></span>
+                  <span class="w-2 h-2 rounded-full bg-brand-orange shrink-0 mb-1"></span>
+                </div>
+                <div class="flex-1 min-w-0 flex flex-col justify-between space-y-1.5">
+                  <div class="text-sm text-gray-300 truncate">${esc(c.direccionRecogida)}</div>
+                  <div class="text-sm text-gray-300 truncate">${esc(c.direccionDestino)}</div>
+                </div>
+              </div>
             </div>
-            <div class="text-amber-400 font-semibold">$${c.precio.toLocaleString('es-CO')}</div>
+            <div class="text-brand-orange font-semibold shrink-0">$${c.precio.toLocaleString('es-CO')}</div>
           </div>
         `).join('');
     }

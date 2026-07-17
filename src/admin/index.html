@@ -5,20 +5,45 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>🛵 Serveloz - Panel Admin</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: { extend: {
+        colors: {
+          brand: {
+            orange: '#F0872E', 'orange-dark': '#D9691A',
+            blue: '#29A8E0', 'blue-dark': '#1C8FC7',
+          },
+          canvas: '#0A0A0B',
+          surface: '#17171A',
+          line: '#26262A',
+        },
+        fontFamily: { display: ['"Barlow Condensed"', 'sans-serif'] },
+      } },
+    };
+  </script>
+  <style>
+    input:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible {
+      outline: 2px solid #F0872E;
+      outline-offset: 2px;
+    }
+  </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center">
-  <div class="bg-gray-800 rounded-xl p-8 border border-gray-700 w-full max-w-sm">
-    <h1 class="text-2xl font-bold text-center mb-6">🛵 Serveloz</h1>
-    <form id="loginForm" class="space-y-4">
+<body class="bg-canvas text-white min-h-screen flex items-center justify-center">
+  <div class="w-full max-w-sm">
+    <img src="/admin/img/logo-full.png" alt="Serveloz — Mototaxi &amp; Domicilios" class="w-48 mx-auto mb-8">
+    <form id="loginForm" class="bg-surface rounded-xl p-8 border border-line space-y-4">
       <div>
         <label class="block text-sm text-gray-400 mb-1">Usuario</label>
-        <input id="username" type="text" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2" required>
+        <input id="username" type="text" placeholder="Usuario" class="w-full bg-canvas border border-line rounded-lg px-3 py-2" required>
       </div>
       <div>
         <label class="block text-sm text-gray-400 mb-1">Contraseña</label>
-        <input id="password" type="password" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2" required>
+        <input id="password" type="password" placeholder="Contraseña" class="w-full bg-canvas border border-line rounded-lg px-3 py-2" required>
       </div>
-      <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-gray-900 font-semibold rounded-lg py-2">Ingresar</button>
+      <button type="submit" class="w-full bg-brand-orange hover:bg-brand-orange-dark text-gray-900 font-semibold rounded-lg py-2">Ingresar</button>
       <p id="error" class="text-red-400 text-sm hidden"></p>
     </form>
   </div>

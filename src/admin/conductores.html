@@ -5,18 +5,43 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>🛵 Conductores - Serveloz Admin</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: { extend: {
+        colors: {
+          brand: {
+            orange: '#F0872E', 'orange-dark': '#D9691A',
+            blue: '#29A8E0', 'blue-dark': '#1C8FC7',
+          },
+          canvas: '#0A0A0B',
+          surface: '#17171A',
+          line: '#26262A',
+        },
+        fontFamily: { display: ['"Barlow Condensed"', 'sans-serif'] },
+      } },
+    };
+  </script>
+  <style>
+    input:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible {
+      outline: 2px solid #F0872E;
+      outline-offset: 2px;
+    }
+  </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen">
-  <nav class="bg-gray-800 border-b border-gray-700">
+<body class="bg-canvas text-white min-h-screen">
+  <nav class="bg-surface border-b border-line">
     <div class="px-4 py-3 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <span class="text-2xl">🛵</span>
-        <span class="font-bold text-lg text-amber-400">Serveloz</span>
-      </div>
+      <a href="/admin/dashboard.html" class="flex items-center gap-2.5">
+        <img src="/admin/img/logo-icon.png" alt="Serveloz" class="h-8 w-auto">
+        <span class="font-display font-bold text-xl tracking-wide text-brand-orange">SERVELOZ</span>
+      </a>
       <div class="hidden md:flex items-center gap-4">
         <a href="/admin/dashboard.html" class="text-gray-300 hover:text-white">Inicio</a>
         <a href="/admin/carreras.html" class="text-gray-300 hover:text-white">Carreras</a>
-        <a href="/admin/conductores.html" class="text-amber-400 font-medium">Conductores</a>
+        <a href="/admin/conductores.html" class="text-brand-orange font-medium">Conductores</a>
         <a href="/admin/clientes.html" class="text-gray-300 hover:text-white">Clientes</a>
         <a href="/admin/conversaciones.html" class="text-gray-300 hover:text-white">Conversaciones</a>
         <a href="/admin/config.html" class="text-gray-300 hover:text-white">Configuración</a>
@@ -28,47 +53,102 @@
         </svg>
       </button>
     </div>
-    <div id="menuMobile" class="hidden md:hidden border-t border-gray-700 px-4 py-2 space-y-1">
-      <a href="/admin/dashboard.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Inicio</a>
-      <a href="/admin/carreras.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Carreras</a>
-      <a href="/admin/conductores.html" class="block px-2 py-2 rounded-lg text-amber-400 font-medium">Conductores</a>
-      <a href="/admin/clientes.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Clientes</a>
-      <a href="/admin/conversaciones.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Conversaciones</a>
-      <a href="/admin/config.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Configuración</a>
-      <button onclick="logout()" class="block w-full text-left px-2 py-2 rounded-lg text-red-400 hover:bg-gray-700">Salir</button>
+    <div id="menuMobile" class="hidden md:hidden border-t border-line px-4 py-2 space-y-1">
+      <a href="/admin/dashboard.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-line hover:text-white">Inicio</a>
+      <a href="/admin/carreras.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-line hover:text-white">Carreras</a>
+      <a href="/admin/conductores.html" class="block px-2 py-2 rounded-lg text-brand-orange font-medium">Conductores</a>
+      <a href="/admin/clientes.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-line hover:text-white">Clientes</a>
+      <a href="/admin/conversaciones.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-line hover:text-white">Conversaciones</a>
+      <a href="/admin/config.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-line hover:text-white">Configuración</a>
+      <button onclick="logout()" class="block w-full text-left px-2 py-2 rounded-lg text-red-400 hover:bg-line">Salir</button>
     </div>
   </nav>
 
   <main class="max-w-4xl mx-auto px-6 py-8">
-    <h1 class="text-2xl font-bold mb-6">Conductores</h1>
-
-    <form id="formNuevo" class="flex flex-wrap gap-2 mb-6">
-      <input id="n_nombre" placeholder="Nombre" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 flex-1 min-w-[160px]" required>
-      <input id="n_telefono" placeholder="Teléfono (573001234567)" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 flex-1 min-w-[160px]" required>
-      <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-gray-900 font-semibold rounded-lg px-4 py-2">+ Agregar</button>
-    </form>
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+      <h1 class="text-3xl font-display font-bold uppercase tracking-wide">Conductores</h1>
+      <button onclick="abrirModalConductor()" class="bg-brand-orange hover:bg-brand-orange-dark text-gray-900 font-semibold rounded-lg px-4 py-2">+ Agregar conductor</button>
+    </div>
 
     <div id="lista" class="space-y-2">
       <div class="text-gray-500 text-sm">Cargando...</div>
     </div>
   </main>
 
+  <!-- Modal: nuevo / editar conductor -->
+  <div id="modalConductor" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center p-4">
+    <div class="bg-surface rounded-xl border border-line p-6 w-full max-w-md">
+      <h2 id="modalConductorTitulo" class="text-lg font-semibold mb-4">Nuevo conductor</h2>
+      <form id="formConductor" class="space-y-3">
+        <input id="c_nombre" placeholder="Nombre" class="w-full bg-canvas border border-line rounded-lg px-3 py-2" required>
+        <input id="c_telefono" placeholder="Teléfono (573001234567)" class="w-full bg-canvas border border-line rounded-lg px-3 py-2" required>
+        <textarea id="c_notas" placeholder="Notas (opcional)" rows="2" class="w-full bg-canvas border border-line rounded-lg px-3 py-2 resize-none"></textarea>
+        <p id="c_error" class="text-red-400 text-sm hidden"></p>
+        <div class="flex gap-2 justify-end pt-2">
+          <button type="button" onclick="cerrarModalConductor()" class="px-4 py-2 rounded-lg text-gray-300">Cancelar</button>
+          <button type="submit" class="bg-brand-orange hover:bg-brand-orange-dark text-gray-900 font-semibold rounded-lg px-4 py-2">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: ver detalles -->
+  <div id="modalDetalles" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center p-4">
+    <div class="bg-surface rounded-xl border border-line p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">Detalles del conductor</h2>
+        <button onclick="cerrarModalDetalles()" class="text-gray-400 hover:text-white">✕</button>
+      </div>
+      <div id="detallesContenido" class="text-sm text-gray-300">Cargando...</div>
+    </div>
+  </div>
+
   <script src="/admin/js/auth.js"></script>
   <script>
     requireAuth();
     initMobileNav();
 
-    document.getElementById('formNuevo').addEventListener('submit', async (e) => {
+    let conductores = [];
+    let conductorEditandoId = null;
+
+    function abrirModalConductor(conductor) {
+      conductorEditandoId = conductor ? conductor.id : null;
+      document.getElementById('modalConductorTitulo').textContent = conductor ? 'Editar conductor' : 'Nuevo conductor';
+      document.getElementById('c_nombre').value = conductor ? conductor.nombre : '';
+      document.getElementById('c_telefono').value = conductor ? conductor.telefono : '';
+      document.getElementById('c_notas').value = conductor && conductor.notas ? conductor.notas : '';
+      document.getElementById('c_error').classList.add('hidden');
+      document.getElementById('modalConductor').classList.remove('hidden');
+    }
+    function cerrarModalConductor() {
+      document.getElementById('modalConductor').classList.add('hidden');
+      document.getElementById('formConductor').reset();
+      conductorEditandoId = null;
+    }
+
+    document.getElementById('formConductor').addEventListener('submit', async (e) => {
       e.preventDefault();
-      await authFetch('/api/admin/conductores', {
-        method: 'POST',
-        body: JSON.stringify({
-          nombre: document.getElementById('n_nombre').value,
-          telefono: document.getElementById('n_telefono').value,
-        }),
-      });
-      document.getElementById('formNuevo').reset();
-      cargar();
+      const errorEl = document.getElementById('c_error');
+      errorEl.classList.add('hidden');
+      const body = {
+        nombre: document.getElementById('c_nombre').value,
+        telefono: document.getElementById('c_telefono').value,
+        notas: document.getElementById('c_notas').value || null,
+      };
+      try {
+        const response = conductorEditandoId
+          ? await authFetch(`/api/admin/conductores/${conductorEditandoId}`, { method: 'PUT', body: JSON.stringify(body) })
+          : await authFetch('/api/admin/conductores', { method: 'POST', body: JSON.stringify(body) });
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'No se pudo guardar el conductor');
+        }
+        cerrarModalConductor();
+        cargar();
+      } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.classList.remove('hidden');
+      }
     });
 
     async function toggleActivo(id, activoActual) {
@@ -76,19 +156,78 @@
       cargar();
     }
 
+    async function abrirDetalles(id) {
+      const conductor = conductores.find(c => c.id === id);
+      if (!conductor) return;
+      document.getElementById('modalDetalles').classList.remove('hidden');
+      const contenido = document.getElementById('detallesContenido');
+      contenido.innerHTML = 'Cargando...';
+
+      const carreras = await (await authFetch(`/api/admin/carreras?conductorId=${id}`)).json();
+      const completadas = carreras.filter(c => c.estado === 'COMPLETADA');
+      const totalGanado = completadas.reduce((suma, c) => suma + c.precio, 0);
+
+      contenido.innerHTML = `
+        <div class="space-y-1 mb-4">
+          <div class="text-base font-semibold text-white">${esc(conductor.nombre)}</div>
+          <div class="text-gray-400">${esc(conductor.telefono)}</div>
+          <div class="text-gray-400">Registrado: ${new Date(conductor.createdAt).toLocaleDateString('es-CO')}</div>
+          <div class="text-gray-400">${conductor.notas ? esc(conductor.notas) : 'Sin notas.'}</div>
+        </div>
+        <div class="grid grid-cols-2 gap-2 mb-4">
+          <div class="bg-canvas rounded-lg border border-line px-3 py-2">
+            <div class="text-2xl font-display font-bold text-brand-blue">${carreras.length}</div>
+            <div class="text-xs text-gray-500">Carreras totales</div>
+          </div>
+          <div class="bg-canvas rounded-lg border border-line px-3 py-2">
+            <div class="text-2xl font-display font-bold text-brand-orange">$${totalGanado.toLocaleString('es-CO')}</div>
+            <div class="text-xs text-gray-500">Total en completadas</div>
+          </div>
+        </div>
+        <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Historial de carreras</div>
+        <div class="space-y-2">
+          ${carreras.length === 0 ? '<div class="text-gray-500 text-sm">Todavía no tiene carreras asignadas.</div>' : carreras.map(c => `
+            <div class="flex justify-between items-center bg-canvas rounded-lg border border-line px-3 py-2">
+              <div class="min-w-0">
+                <div class="text-sm text-gray-100 truncate">${esc(c.radicado)} · ${esc(c.direccionRecogida)} → ${esc(c.direccionDestino)}</div>
+                <div class="text-xs text-gray-500">${new Date(c.createdAt).toLocaleDateString('es-CO')} · ${esc(c.estado)}</div>
+              </div>
+              <div class="text-sm font-semibold text-brand-orange shrink-0 ml-2">$${c.precio.toLocaleString('es-CO')}</div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+    function cerrarModalDetalles() {
+      document.getElementById('modalDetalles').classList.add('hidden');
+    }
+
     async function cargar() {
-      const conductores = await (await authFetch('/api/admin/conductores')).json();
+      conductores = await (await authFetch('/api/admin/conductores')).json();
       document.getElementById('lista').innerHTML = conductores.map(c => `
-        <div class="flex justify-between items-center bg-gray-800 rounded-lg px-4 py-3 border border-gray-700">
-          <div>
-            <div class="font-medium">${esc(c.nombre)}</div>
+        <div class="flex justify-between items-center bg-surface rounded-lg px-4 py-3 border border-line">
+          <div class="min-w-0">
+            <div class="font-medium truncate">${esc(c.nombre)}</div>
             <div class="text-gray-400 text-sm">${esc(c.telefono)}</div>
           </div>
-          <button onclick="toggleActivo('${c.id}', ${c.activo})" class="text-sm rounded-lg px-3 py-1 border ${c.activo ? 'border-green-600 text-green-400' : 'border-gray-600 text-gray-500'}">
-            ${c.activo ? 'Activo' : 'Inactivo'}
-          </button>
+          <div class="flex items-center gap-2 shrink-0">
+            <button onclick="abrirDetalles('${c.id}')" class="text-sm rounded-lg px-3 py-1 border border-line hover:border-brand-blue text-gray-300">Ver detalles</button>
+            <button data-conductor="${esc(JSON.stringify(c))}" class="btn-editar text-sm rounded-lg px-3 py-1 border border-line hover:border-brand-orange text-gray-300">Editar</button>
+            <button onclick="toggleActivo('${c.id}', ${c.activo})" class="text-sm rounded-lg px-3 py-1 border ${c.activo ? 'border-green-600 text-green-400' : 'border-line text-gray-500'}">
+              ${c.activo ? 'Activo' : 'Inactivo'}
+            </button>
+          </div>
         </div>
       `).join('');
+
+      // Los botones "Editar" llevan el conductor completo (nombre/notas pueden traer
+      // comillas) vía data-attribute + addEventListener en vez de onclick con el
+      // objeto interpolado: un onclick="...'${JSON.stringify(c)}'..." se rompe (y
+      // podría inyectar HTML/JS) si el valor contiene un apóstrofe. data-attributes
+      // solo tienen un contexto de escapado (HTML), así que basta con esc().
+      document.querySelectorAll('.btn-editar').forEach(btn => {
+        btn.addEventListener('click', () => abrirModalConductor(JSON.parse(btn.dataset.conductor)));
+      });
     }
 
     cargar();

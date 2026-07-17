@@ -5,21 +5,46 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>🛵 Configuración - Serveloz Admin</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: { extend: {
+        colors: {
+          brand: {
+            orange: '#F0872E', 'orange-dark': '#D9691A',
+            blue: '#29A8E0', 'blue-dark': '#1C8FC7',
+          },
+          canvas: '#0A0A0B',
+          surface: '#17171A',
+          line: '#26262A',
+        },
+        fontFamily: { display: ['"Barlow Condensed"', 'sans-serif'] },
+      } },
+    };
+  </script>
+  <style>
+    input:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible {
+      outline: 2px solid #F0872E;
+      outline-offset: 2px;
+    }
+  </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen">
-  <nav class="bg-gray-800 border-b border-gray-700">
+<body class="bg-canvas text-white min-h-screen">
+  <nav class="bg-surface border-b border-line">
     <div class="px-4 py-3 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <span class="text-2xl">🛵</span>
-        <span class="font-bold text-lg text-amber-400">Serveloz</span>
-      </div>
+      <a href="/admin/dashboard.html" class="flex items-center gap-2.5">
+        <img src="/admin/img/logo-icon.png" alt="Serveloz" class="h-8 w-auto">
+        <span class="font-display font-bold text-xl tracking-wide text-brand-orange">SERVELOZ</span>
+      </a>
       <div class="hidden md:flex items-center gap-4">
         <a href="/admin/dashboard.html" class="text-gray-300 hover:text-white">Inicio</a>
         <a href="/admin/carreras.html" class="text-gray-300 hover:text-white">Carreras</a>
         <a href="/admin/conductores.html" class="text-gray-300 hover:text-white">Conductores</a>
         <a href="/admin/clientes.html" class="text-gray-300 hover:text-white">Clientes</a>
         <a href="/admin/conversaciones.html" class="text-gray-300 hover:text-white">Conversaciones</a>
-        <a href="/admin/config.html" class="text-amber-400 font-medium">Configuración</a>
+        <a href="/admin/config.html" class="text-brand-orange font-medium">Configuración</a>
         <button onclick="logout()" class="text-red-400 hover:text-red-300 text-sm">Salir</button>
       </div>
       <button id="btnMenuMobile" class="md:hidden p-2 -mr-2 text-gray-300" aria-label="Abrir menú" aria-expanded="false">
@@ -28,49 +53,49 @@
         </svg>
       </button>
     </div>
-    <div id="menuMobile" class="hidden md:hidden border-t border-gray-700 px-4 py-2 space-y-1">
-      <a href="/admin/dashboard.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Inicio</a>
-      <a href="/admin/carreras.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Carreras</a>
-      <a href="/admin/conductores.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Conductores</a>
-      <a href="/admin/clientes.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Clientes</a>
-      <a href="/admin/conversaciones.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Conversaciones</a>
-      <a href="/admin/config.html" class="block px-2 py-2 rounded-lg text-amber-400 font-medium">Configuración</a>
-      <button onclick="logout()" class="block w-full text-left px-2 py-2 rounded-lg text-red-400 hover:bg-gray-700">Salir</button>
+    <div id="menuMobile" class="hidden md:hidden border-t border-line px-4 py-2 space-y-1">
+      <a href="/admin/dashboard.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-line hover:text-white">Inicio</a>
+      <a href="/admin/carreras.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-line hover:text-white">Carreras</a>
+      <a href="/admin/conductores.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-line hover:text-white">Conductores</a>
+      <a href="/admin/clientes.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-line hover:text-white">Clientes</a>
+      <a href="/admin/conversaciones.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-line hover:text-white">Conversaciones</a>
+      <a href="/admin/config.html" class="block px-2 py-2 rounded-lg text-brand-orange font-medium">Configuración</a>
+      <button onclick="logout()" class="block w-full text-left px-2 py-2 rounded-lg text-red-400 hover:bg-line">Salir</button>
     </div>
   </nav>
 
   <main class="max-w-md mx-auto px-6 py-8">
-    <h1 class="text-2xl font-bold mb-6">Configuración de tarifas</h1>
+    <h1 class="text-3xl font-display font-bold uppercase tracking-wide mb-6">Configuración de tarifas</h1>
 
-    <form id="form" class="space-y-4 bg-gray-800 rounded-xl border border-gray-700 p-6">
+    <form id="form" class="space-y-4 bg-surface rounded-xl border border-line p-6">
       <div>
         <label class="block text-sm text-gray-400 mb-1">Tarifa mínima ($)</label>
-        <input id="tarifaMinima" type="number" step="1" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2" required>
+        <input id="tarifaMinima" type="number" step="1" class="w-full bg-canvas border border-line rounded-lg px-3 py-2" required>
       </div>
 
-      <div class="border-t border-gray-700 pt-4">
+      <div class="border-t border-line pt-4">
         <p class="text-sm text-gray-400 mb-2">Tarifa por km según municipio de destino</p>
         <div class="space-y-2">
           <div>
             <label class="block text-xs text-gray-500 mb-1">Bucaramanga</label>
-            <input id="tarifa_BUCARAMANGA" type="number" step="1" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2" required>
+            <input id="tarifa_BUCARAMANGA" type="number" step="1" class="w-full bg-canvas border border-line rounded-lg px-3 py-2" required>
           </div>
           <div>
             <label class="block text-xs text-gray-500 mb-1">Floridablanca</label>
-            <input id="tarifa_FLORIDABLANCA" type="number" step="1" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2" required>
+            <input id="tarifa_FLORIDABLANCA" type="number" step="1" class="w-full bg-canvas border border-line rounded-lg px-3 py-2" required>
           </div>
           <div>
             <label class="block text-xs text-gray-500 mb-1">Girón</label>
-            <input id="tarifa_GIRON" type="number" step="1" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2" required>
+            <input id="tarifa_GIRON" type="number" step="1" class="w-full bg-canvas border border-line rounded-lg px-3 py-2" required>
           </div>
           <div>
             <label class="block text-xs text-gray-500 mb-1">Piedecuesta</label>
-            <input id="tarifa_PIEDECUESTA" type="number" step="1" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2" required>
+            <input id="tarifa_PIEDECUESTA" type="number" step="1" class="w-full bg-canvas border border-line rounded-lg px-3 py-2" required>
           </div>
         </div>
       </div>
 
-      <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-gray-900 font-semibold rounded-lg py-2">Guardar</button>
+      <button type="submit" class="w-full bg-brand-orange hover:bg-brand-orange-dark text-gray-900 font-semibold rounded-lg py-2">Guardar</button>
       <p id="mensaje" class="text-sm hidden"></p>
     </form>
   </main>

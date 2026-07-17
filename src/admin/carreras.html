@@ -5,17 +5,42 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>🛵 Carreras - Serveloz Admin</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: { extend: {
+        colors: {
+          brand: {
+            orange: '#F0872E', 'orange-dark': '#D9691A',
+            blue: '#29A8E0', 'blue-dark': '#1C8FC7',
+          },
+          canvas: '#0A0A0B',
+          surface: '#17171A',
+          line: '#26262A',
+        },
+        fontFamily: { display: ['"Barlow Condensed"', 'sans-serif'] },
+      } },
+    };
+  </script>
+  <style>
+    input:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible {
+      outline: 2px solid #F0872E;
+      outline-offset: 2px;
+    }
+  </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen">
-  <nav class="bg-gray-800 border-b border-gray-700">
+<body class="bg-canvas text-white min-h-screen">
+  <nav class="bg-surface border-b border-line">
     <div class="px-4 py-3 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <span class="text-2xl">🛵</span>
-        <span class="font-bold text-lg text-amber-400">Serveloz</span>
-      </div>
+      <a href="/admin/dashboard.html" class="flex items-center gap-2.5">
+        <img src="/admin/img/logo-icon.png" alt="Serveloz" class="h-8 w-auto">
+        <span class="font-display font-bold text-xl tracking-wide text-brand-orange">SERVELOZ</span>
+      </a>
       <div class="hidden md:flex items-center gap-4">
         <a href="/admin/dashboard.html" class="text-gray-300 hover:text-white">Inicio</a>
-        <a href="/admin/carreras.html" class="text-amber-400 font-medium">Carreras</a>
+        <a href="/admin/carreras.html" class="text-brand-orange font-medium">Carreras</a>
         <a href="/admin/conductores.html" class="text-gray-300 hover:text-white">Conductores</a>
         <a href="/admin/clientes.html" class="text-gray-300 hover:text-white">Clientes</a>
         <a href="/admin/conversaciones.html" class="text-gray-300 hover:text-white">Conversaciones</a>
@@ -28,29 +53,29 @@
         </svg>
       </button>
     </div>
-    <div id="menuMobile" class="hidden md:hidden border-t border-gray-700 px-4 py-2 space-y-1">
-      <a href="/admin/dashboard.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Inicio</a>
-      <a href="/admin/carreras.html" class="block px-2 py-2 rounded-lg text-amber-400 font-medium">Carreras</a>
-      <a href="/admin/conductores.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Conductores</a>
-      <a href="/admin/clientes.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Clientes</a>
-      <a href="/admin/conversaciones.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Conversaciones</a>
-      <a href="/admin/config.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white">Configuración</a>
-      <button onclick="logout()" class="block w-full text-left px-2 py-2 rounded-lg text-red-400 hover:bg-gray-700">Salir</button>
+    <div id="menuMobile" class="hidden md:hidden border-t border-line px-4 py-2 space-y-1">
+      <a href="/admin/dashboard.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-line hover:text-white">Inicio</a>
+      <a href="/admin/carreras.html" class="block px-2 py-2 rounded-lg text-brand-orange font-medium">Carreras</a>
+      <a href="/admin/conductores.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-line hover:text-white">Conductores</a>
+      <a href="/admin/clientes.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-line hover:text-white">Clientes</a>
+      <a href="/admin/conversaciones.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-line hover:text-white">Conversaciones</a>
+      <a href="/admin/config.html" class="block px-2 py-2 rounded-lg text-gray-300 hover:bg-line hover:text-white">Configuración</a>
+      <button onclick="logout()" class="block w-full text-left px-2 py-2 rounded-lg text-red-400 hover:bg-line">Salir</button>
     </div>
   </nav>
 
   <main class="max-w-6xl mx-auto px-4 md:px-6 py-8">
     <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
-      <h1 class="text-2xl font-bold">Carreras</h1>
-      <button onclick="abrirModalManual()" class="bg-amber-500 hover:bg-amber-600 text-gray-900 font-semibold rounded-lg px-4 py-2">+ Nueva carrera manual</button>
+      <h1 class="text-3xl font-display font-bold uppercase tracking-wide">Carreras</h1>
+      <button onclick="abrirModalManual()" class="bg-brand-orange hover:bg-brand-orange-dark text-gray-900 font-semibold rounded-lg px-4 py-2">+ Nueva carrera manual</button>
     </div>
 
     <div class="flex flex-wrap gap-2 mb-4" id="filtros">
-      <button data-estado="" class="filtro-btn bg-amber-500 text-gray-900 px-3 py-1 rounded-lg text-sm font-medium">Todas</button>
-      <button data-estado="PENDIENTE_ASIGNACION" class="filtro-btn bg-gray-800 px-3 py-1 rounded-lg text-sm">Pendientes</button>
-      <button data-estado="ASIGNADA" class="filtro-btn bg-gray-800 px-3 py-1 rounded-lg text-sm">Asignadas</button>
-      <button data-estado="COMPLETADA" class="filtro-btn bg-gray-800 px-3 py-1 rounded-lg text-sm">Completadas</button>
-      <button data-estado="CANCELADA" class="filtro-btn bg-gray-800 px-3 py-1 rounded-lg text-sm">Canceladas</button>
+      <button data-estado="" class="filtro-btn bg-brand-orange text-gray-900 px-3 py-1 rounded-lg text-sm font-medium">Todas</button>
+      <button data-estado="PENDIENTE_ASIGNACION" class="filtro-btn bg-surface px-3 py-1 rounded-lg text-sm">Pendientes</button>
+      <button data-estado="ASIGNADA" class="filtro-btn bg-surface px-3 py-1 rounded-lg text-sm">Asignadas</button>
+      <button data-estado="COMPLETADA" class="filtro-btn bg-surface px-3 py-1 rounded-lg text-sm">Completadas</button>
+      <button data-estado="CANCELADA" class="filtro-btn bg-surface px-3 py-1 rounded-lg text-sm">Canceladas</button>
     </div>
 
     <div id="listaCarreras" class="space-y-3">
@@ -59,25 +84,25 @@
   </main>
 
   <div id="modalManual" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center p-4">
-    <div class="bg-gray-800 rounded-xl border border-gray-700 p-6 w-full max-w-md">
+    <div class="bg-surface rounded-xl border border-line p-6 w-full max-w-md">
       <h2 class="text-lg font-semibold mb-4">Nueva carrera manual</h2>
       <form id="formManual" class="space-y-3">
-        <input id="m_clienteTelefono" placeholder="Teléfono del cliente" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2" required>
-        <input id="m_clienteNombre" placeholder="Nombre del cliente" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2" required>
-        <select id="m_tipoServicio" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2">
+        <input id="m_clienteTelefono" placeholder="Teléfono del cliente" class="w-full bg-canvas border border-line rounded-lg px-3 py-2" required>
+        <input id="m_clienteNombre" placeholder="Nombre del cliente" class="w-full bg-canvas border border-line rounded-lg px-3 py-2" required>
+        <select id="m_tipoServicio" class="w-full bg-canvas border border-line rounded-lg px-3 py-2">
           <option value="DOMICILIO">Domicilio</option>
           <option value="MOTOTAXI">Mototaxi</option>
         </select>
-        <input id="m_recogida" placeholder="Dirección de recogida" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2" required>
-        <input id="m_destino" placeholder="Dirección de destino" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2" required>
-        <input id="m_fechaProgramada" type="datetime-local" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2">
-        <select id="m_conductorId" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2">
+        <input id="m_recogida" placeholder="Dirección de recogida" class="w-full bg-canvas border border-line rounded-lg px-3 py-2" required>
+        <input id="m_destino" placeholder="Dirección de destino" class="w-full bg-canvas border border-line rounded-lg px-3 py-2" required>
+        <input id="m_fechaProgramada" type="datetime-local" class="w-full bg-canvas border border-line rounded-lg px-3 py-2">
+        <select id="m_conductorId" class="w-full bg-canvas border border-line rounded-lg px-3 py-2">
           <option value="">Sin asignar todavía</option>
         </select>
         <p id="m_error" class="text-red-400 text-sm hidden"></p>
         <div class="flex gap-2 justify-end pt-2">
           <button type="button" onclick="cerrarModalManual()" class="px-4 py-2 rounded-lg text-gray-300">Cancelar</button>
-          <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-gray-900 font-semibold rounded-lg px-4 py-2">Crear</button>
+          <button type="submit" class="bg-brand-orange hover:bg-brand-orange-dark text-gray-900 font-semibold rounded-lg px-4 py-2">Crear</button>
         </div>
       </form>
     </div>
@@ -137,8 +162,8 @@
 
     document.querySelectorAll('.filtro-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.filtro-btn').forEach(b => b.className = 'filtro-btn bg-gray-800 px-3 py-1 rounded-lg text-sm');
-        btn.className = 'filtro-btn bg-amber-500 text-gray-900 px-3 py-1 rounded-lg text-sm font-medium';
+        document.querySelectorAll('.filtro-btn').forEach(b => b.className = 'filtro-btn bg-surface px-3 py-1 rounded-lg text-sm');
+        btn.className = 'filtro-btn bg-brand-orange text-gray-900 px-3 py-1 rounded-lg text-sm font-medium';
         filtroActual = btn.dataset.estado;
         cargarCarreras();
       });
@@ -155,9 +180,8 @@
       cargarCarreras();
     }
 
-    async function togglePago(carreraId, estadoPagoActual) {
-      const nuevo = estadoPagoActual === 'PAGADO' ? 'PENDIENTE' : 'PAGADO';
-      await authFetch(`/api/admin/carreras/${carreraId}/pago`, { method: 'PUT', body: JSON.stringify({ estadoPago: nuevo }) });
+    async function marcarPagado(carreraId) {
+      await authFetch(`/api/admin/carreras/${carreraId}/pago`, { method: 'PUT', body: JSON.stringify({ estadoPago: 'PAGADO' }) });
       cargarCarreras();
     }
 
@@ -170,29 +194,49 @@
       cont.innerHTML = carreras.length === 0
         ? '<div class="text-gray-500 text-sm">No hay carreras con este filtro.</div>'
         : carreras.map(c => `
-          <div class="bg-gray-800 rounded-xl border border-gray-700 p-4">
-            <div class="flex justify-between items-start mb-2">
-              <div>
-                <div class="font-medium">${esc(c.radicado)} — ${esc(c.cliente.nombre)} (${esc(c.cliente.telefono)})</div>
-                <div class="text-gray-400 text-sm">${esc(c.tipoServicio)} · ${esc(c.direccionRecogida)} → ${esc(c.direccionDestino)}</div>
-                <div class="text-gray-400 text-sm">${c.distanciaKm.toFixed(1)} km · $${c.precio.toLocaleString('es-CO')} · Pago: ${esc(c.estadoPago)}</div>
+          <div class="bg-surface rounded-xl border border-line p-4">
+            <div class="flex justify-between items-start gap-3 mb-3">
+              <div class="min-w-0">
+                <div class="font-semibold truncate">${esc(c.cliente.nombre)} <span class="text-gray-500 font-normal">(${esc(c.cliente.telefono)})</span></div>
+                <div class="text-gray-500 text-xs mt-0.5">${esc(c.radicado)} · ${esc(c.tipoServicio)}</div>
               </div>
-              <span class="text-xs px-2 py-1 rounded-full bg-gray-900 border border-gray-700">${esc(c.estado)}</span>
+              <span class="shrink-0 text-xs px-2 py-1 rounded-full bg-canvas border border-line">${esc(c.estado)}</span>
             </div>
-            <div class="flex flex-wrap gap-2 items-center mt-2">
+
+            <div class="flex gap-2.5 mb-3">
+              <div class="flex flex-col items-center">
+                <span class="w-2 h-2 rounded-full border-2 border-brand-blue bg-surface shrink-0 mt-1.5"></span>
+                <span class="w-px flex-1 bg-line my-0.5"></span>
+                <span class="w-2 h-2 rounded-full bg-brand-orange shrink-0 mb-1.5"></span>
+              </div>
+              <div class="flex-1 min-w-0 flex flex-col justify-between space-y-2.5">
+                <span class="text-sm text-gray-100">${esc(c.direccionRecogida)}</span>
+                <span class="text-sm text-gray-100">${esc(c.direccionDestino)}</span>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap gap-2 mb-3">
+              <span class="text-xs font-medium px-2 py-1 rounded-lg bg-canvas border border-line text-gray-300">${c.distanciaKm.toFixed(1)} km</span>
+              <span class="text-xs font-semibold px-2 py-1 rounded-lg bg-brand-orange/10 text-brand-orange border border-brand-orange/30">$${c.precio.toLocaleString('es-CO')}</span>
+              <span class="text-xs px-2 py-1 rounded-lg border ${c.estadoPago === 'PAGADO' ? 'border-green-700 text-green-400' : 'border-line text-gray-400'}">${esc(c.estadoPago)}</span>
+            </div>
+
+            <div class="flex flex-wrap gap-2 items-center pt-3 border-t border-line">
               ${c.estado === 'PENDIENTE_ASIGNACION' ? `
-                <select id="sel_${c.id}" class="bg-gray-900 border border-gray-700 rounded-lg px-2 py-1 text-sm">
+                <select id="sel_${c.id}" class="bg-canvas border border-line rounded-lg px-2 py-1 text-sm">
                   <option value="">Elegir conductor...</option>
                   ${conductores.filter(cd => cd.activo).map(cd => `<option value="${cd.id}">${esc(cd.nombre)}</option>`).join('')}
                 </select>
-                <button onclick="asignarConductor('${c.id}', document.getElementById('sel_${c.id}').value)" class="bg-amber-500 hover:bg-amber-600 text-gray-900 text-sm font-medium rounded-lg px-3 py-1">Asignar</button>
-              ` : ''}
-              ${c.estado === 'ASIGNADA' ? `
-                <span class="text-sm text-gray-300">Conductor: ${c.conductor ? esc(c.conductor.nombre) : '—'}</span>
-                <button onclick="marcarCompletada('${c.id}')" class="bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg px-3 py-1">Marcar completada</button>
+                <button onclick="asignarConductor('${c.id}', document.getElementById('sel_${c.id}').value)" class="bg-brand-orange hover:bg-brand-orange-dark text-gray-900 text-sm font-medium rounded-lg px-3 py-1">Asignar</button>
               ` : ''}
               ${['ASIGNADA', 'COMPLETADA'].includes(c.estado) ? `
-                <button onclick="togglePago('${c.id}', '${c.estadoPago}')" class="text-sm rounded-lg px-3 py-1 border border-gray-700">${c.estadoPago === 'PAGADO' ? 'Marcar pendiente' : 'Marcar pagado'}</button>
+                <span class="text-sm text-gray-300">Conductor: ${c.conductor ? esc(c.conductor.nombre) : '—'}</span>
+              ` : ''}
+              ${c.estado === 'ASIGNADA' ? `
+                <button onclick="marcarCompletada('${c.id}')" class="bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg px-3 py-1">Marcar completada</button>
+              ` : ''}
+              ${['ASIGNADA', 'COMPLETADA'].includes(c.estado) && c.estadoPago !== 'PAGADO' ? `
+                <button onclick="marcarPagado('${c.id}')" class="text-sm rounded-lg px-3 py-1 border border-line hover:border-brand-orange">Marcar pagado</button>
               ` : ''}
             </div>
           </div>
