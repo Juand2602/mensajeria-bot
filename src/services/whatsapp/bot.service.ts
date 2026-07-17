@@ -374,13 +374,15 @@ export class WhatsAppBotService {
     imagen?: ImagenRecibida
   ) {
     if (imagen) {
+      let url: string;
       try {
-        const url = await mediaService.descargarYSubir(imagen.mediaId);
-        await this.crearCarreraConfirmada(telefono, contexto, conversacionId, url);
+        url = await mediaService.descargarYSubir(imagen.mediaId);
       } catch (error) {
         console.error('Error procesando evidencia del cliente:', error);
         await mensajeriaService.enviarMensaje(telefono, MENSAJES.EVIDENCIA_ERROR());
+        return;
       }
+      await this.crearCarreraConfirmada(telefono, contexto, conversacionId, url);
       return;
     }
     if (mensaje === 'evidencia_continuar' || messageParser.esNegativo(mensaje)) {
