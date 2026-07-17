@@ -13,6 +13,9 @@ export class MediaService {
   // sube a Cloudinary para tener una URL durable — la URL que da la Graph API de
   // Meta expira a los pocos minutos, así que no sirve guardarla directamente.
   async descargarYSubir(mediaId: string): Promise<string> {
+    if (!cloudinaryConfig.cloudName || !cloudinaryConfig.apiKey || !cloudinaryConfig.apiSecret) {
+      throw new Error('Cloudinary no está configurado (faltan CLOUDINARY_CLOUD_NAME/CLOUDINARY_API_KEY/CLOUDINARY_API_SECRET)');
+    }
     const metaResponse = await axios.get(`${whatsappConfig.apiUrl}/${mediaId}`, {
       headers: { Authorization: `Bearer ${whatsappConfig.token}` },
       timeout: 10000,

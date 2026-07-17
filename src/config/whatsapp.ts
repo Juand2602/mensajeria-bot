@@ -34,7 +34,9 @@ export const botConfig = {
 };
 
 export const cloudinaryConfig = {
-  cloudName: requireEnv('CLOUDINARY_CLOUD_NAME'),
-  apiKey: requireEnv('CLOUDINARY_API_KEY'),
-  apiSecret: requireEnv('CLOUDINARY_API_SECRET'),
+  // Opcional — si no está configurado, media.service.ts falla de forma clara
+  // y ya capturada en lugar de tumbar el arranque de todo el bot.
+  cloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
+  apiKey: process.env.CLOUDINARY_API_KEY || '',
+  apiSecret: process.env.CLOUDINARY_API_SECRET || '',
 };
