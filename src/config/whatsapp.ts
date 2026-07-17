@@ -32,3 +32,9 @@ export const botConfig = {
   timeoutConversacion: parseInt(process.env.TIMEOUT_CONVERSACION || '300000'),
   avisoProgramadaMinutosAntes: parseInt(process.env.AVISO_PROGRAMADA_MINUTOS_ANTES || '30'),
 };
+
+export const cloudinaryConfig = {
+  cloudName: requireEnv('CLOUDINARY_CLOUD_NAME'),
+  apiKey: requireEnv('CLOUDINARY_API_KEY'),
+  apiSecret: requireEnv('CLOUDINARY_API_SECRET'),
+};

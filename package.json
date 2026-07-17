@@ -12,12 +12,19 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio"
   },
-  "keywords": ["serveloz", "whatsapp", "railway", "chatbot", "domicilios"],
+  "keywords": [
+    "serveloz",
+    "whatsapp",
+    "railway",
+    "chatbot",
+    "domicilios"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@prisma/client": "^5.7.0",
     "axios": "^1.6.2",
+    "cloudinary": "^2.10.0",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",

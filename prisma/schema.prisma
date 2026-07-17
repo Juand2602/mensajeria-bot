@@ -83,6 +83,8 @@ model Carrera {
   notas             String?
   motivoCancelacion String?
 
+  evidencias EvidenciaFoto[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -90,6 +92,19 @@ model Carrera {
   @@index([estado])
   @@index([conductorId])
   @@index([fechaHoraProgramada])
+}
+
+// ==================== EVIDENCIA FOTOGRÁFICA ====================
+model EvidenciaFoto {
+  id        String   @id @default(uuid())
+  carreraId String
+  carrera   Carrera  @relation(fields: [carreraId], references: [id])
+  tipo      String?  // RECOGIDA | ENTREGA — null para fotos del cliente (no aplica)
+  autor     String   // CLIENTE | CONDUCTOR
+  url       String
+  createdAt DateTime @default(now())
+
+  @@index([carreraId])
 }
 
 // ==================== CONVERSACIONES (CONTEXTO BOT) ====================

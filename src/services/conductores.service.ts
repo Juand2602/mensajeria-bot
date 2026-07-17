@@ -14,6 +14,10 @@ export class ConductoresService {
     return conductor;
   }
 
+  async buscarPorTelefono(telefono: string) {
+    return prisma.conductor.findFirst({ where: { telefono, activo: true } });
+  }
+
   async create(data: { nombre: string; telefono: string; notas?: string }) {
     return prisma.conductor.create({
       data: { nombre: data.nombre.trim(), telefono: data.telefono.trim(), notas: data.notas },
