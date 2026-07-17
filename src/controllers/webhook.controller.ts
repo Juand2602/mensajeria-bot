@@ -4,6 +4,7 @@ import { whatsappBotService } from '../services/whatsapp/bot.service';
 import { mensajeriaService } from '../services/mensajeria.service';
 import { conductoresService } from '../services/conductores.service';
 import { conductorBotService } from '../services/whatsapp/conductor-bot.service';
+import { whatsappMessagesService } from '../services/whatsapp/messages.service';
 import { whatsappConfig } from '../config/whatsapp';
 
 const mensajesProcesados = new Set<string>();
@@ -55,7 +56,15 @@ export class WebhookController {
         const texto = message.text?.body;
         if (texto) {
           await mensajeriaService.registrarEntrante(telefono, texto);
-          await whatsappBotService.procesarMensaje(telefono, texto);
+          const conductor = await conductoresService.buscarPorTelefono(telefono);
+          if (conductor) {
+            await whatsappMessagesService.enviarMensaje(
+              telefono,
+              '📷 Puedes enviarme una foto de evidencia cuando quieras. Si necesitas hablar sobre una carrera, contacta al dueño directamente.'
+            );
+          } else {
+            await whatsappBotService.procesarMensaje(telefono, texto);
+          }
         }
       } else if (message.type === 'image' && message.image) {
         await mensajeriaService.registrarEntrante(telefono, '📷 Foto enviada');
