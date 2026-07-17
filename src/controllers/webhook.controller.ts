@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { WhatsAppWebhookPayload } from '../types';
 import { whatsappBotService } from '../services/whatsapp/bot.service';
 import { mensajeriaService } from '../services/mensajeria.service';
+import { conductoresService } from '../services/conductores.service';
+import { conductorBotService } from '../services/whatsapp/conductor-bot.service';
 import { whatsappConfig } from '../config/whatsapp';
 
 const mensajesProcesados = new Set<string>();
@@ -57,9 +59,14 @@ export class WebhookController {
         }
       } else if (message.type === 'image' && message.image) {
         await mensajeriaService.registrarEntrante(telefono, '📷 Foto enviada');
-        await whatsappBotService.procesarMensaje(telefono, 'IMAGEN_RECIBIDA', false, undefined, undefined, {
-          mediaId: message.image.id,
-        });
+        const conductor = await conductoresService.buscarPorTelefono(telefono);
+        if (conductor) {
+          await conductorBotService.procesarFoto(conductor, message.image.id);
+        } else {
+          await whatsappBotService.procesarMensaje(telefono, 'IMAGEN_RECIBIDA', false, undefined, undefined, {
+            mediaId: message.image.id,
+          });
+        }
       } else if (message.type === 'location' && message.location) {
         const { latitude, longitude, name, address } = message.location;
         await mensajeriaService.registrarEntrante(telefono, `📍 Ubicación compartida (${latitude}, ${longitude})`);
@@ -73,7 +80,12 @@ export class WebhookController {
         const reply = message.interactive?.button_reply || message.interactive?.list_reply;
         if (reply) {
           await mensajeriaService.registrarEntrante(telefono, reply.title);
-          await whatsappBotService.procesarMensaje(telefono, reply.id, true, reply.id);
+          const conductor = await conductoresService.buscarPorTelefono(telefono);
+          if (conductor && (reply.id === 'evidencia_recogida' || reply.id === 'evidencia_entrega')) {
+            await conductorBotService.procesarEtiqueta(conductor, reply.id === 'evidencia_recogida' ? 'RECOGIDA' : 'ENTREGA');
+          } else {
+            await whatsappBotService.procesarMensaje(telefono, reply.id, true, reply.id);
+          }
         }
       }
     } catch (error) {
