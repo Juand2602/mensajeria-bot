@@ -114,6 +114,19 @@
     initMobileNav();
     let filtroActual = '';
 
+    // Las URLs de evidencia vienen de Cloudinary (secure_url), pero se valida el
+    // esquema igual antes de usarlas en un href: esc() neutraliza inyección de
+    // HTML/atributos, pero no un valor tipo "javascript:..." — eso solo lo evita
+    // exigir que el esquema sea http/https.
+    function urlSegura(valor) {
+      try {
+        const url = new URL(valor);
+        return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : '#';
+      } catch {
+        return '#';
+      }
+    }
+
     async function cargarConductoresSelect() {
       const conductores = await (await authFetch('/api/admin/conductores')).json();
       const select = document.getElementById('m_conductorId');
@@ -224,7 +237,7 @@
             ${c.evidencias && c.evidencias.length > 0 ? `
               <div class="flex flex-wrap gap-2 mb-3">
                 ${c.evidencias.map(ev => `
-                  <a href="${esc(ev.url)}" target="_blank" rel="noopener" class="text-xs px-2 py-1 rounded-lg border border-line text-gray-300 hover:border-brand-blue">
+                  <a href="${esc(urlSegura(ev.url))}" target="_blank" rel="noopener" class="text-xs px-2 py-1 rounded-lg border border-line text-gray-300 hover:border-brand-blue">
                     📷 ${ev.autor === 'CLIENTE' ? 'Cliente' : ev.tipo === 'RECOGIDA' ? 'Recogida' : ev.tipo === 'ENTREGA' ? 'Entrega' : 'Conductor'}
                   </a>
                 `).join('')}
