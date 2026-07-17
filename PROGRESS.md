@@ -1,6 +1,6 @@
 # Serveloz — Progreso de la Etapa 1
 
-Última actualización: 2026-07-15
+Última actualización: 2026-07-17
 
 ## Qué se hizo en esta sesión
 
@@ -185,3 +185,68 @@ en `.env.example`.
   pero sin commitear en `src/services/radar.service.ts` y `README.md` que reemplaza
   Radar por Nominatim/OSRM como proveedor de geocoding/distancia (Radar pasó a ser
   100% sales-gated) — pendiente de revisión y commit aparte por quien lo hizo.
+
+## Actualización 2026-07-17: evidencia fotográfica de clientes y conductores
+
+Se agregó soporte para adjuntar fotos de evidencia a una carrera, siguiendo el mismo
+proceso de las etapas anteriores (spec de diseño → plan de implementación de 5 tareas →
+ejecución con subagentes → revisión), ver
+`docs/superpowers/plans/2026-07-16-evidencia-fotografica-implementation.md`.
+
+**Modelo de datos:** nueva tabla `EvidenciaFoto` (`carreraId`, `autor`, `tipo`, `url`),
+una fila por cada foto asociada a una carrera:
+- `autor`: `CLIENTE` o `CONDUCTOR`.
+- `tipo`: `RECOGIDA` o `ENTREGA` para fotos del conductor; `null` para fotos del
+  cliente (no aplica).
+- `url`: ubicación en Cloudinary de la imagen ya subida (el bot descarga la foto de
+  WhatsApp y la reenvía a Cloudinary vía el nuevo `media.service.ts`, en vez de guardar
+  la URL temporal de Meta).
+
+**Flujo del cliente:** al confirmar un pedido de tipo DOMICILIO, antes de crear la
+carrera el bot ofrece un paso opcional (`ESPERANDO_EVIDENCIA_CLIENTE`) para adjuntar
+una foto del paquete/producto; si el cliente la envía se sube y se guarda como
+`EvidenciaFoto` con `autor: 'CLIENTE'`, `tipo: null`; si no la envía (o escribe
+"omitir"/similar) la carrera se crea igual sin foto.
+
+**Flujo del conductor:** sin máquina de estados nueva — el webhook identifica al
+remitente por teléfono (`conductoresService.buscarPorTelefono`) antes de tratarlo como
+cliente. Si es un conductor reconocido y envía una foto:
+- con **exactamente una** carrera en estado `ASIGNADA`, el bot responde con botones
+  Recogida/Entrega para clasificar la foto, y al elegir se guarda como `EvidenciaFoto`
+  con `autor: 'CONDUCTOR'` y el `tipo` correspondiente;
+- con **cero o más de una** carrera `ASIGNADA`, el bot no puede inferir a cuál
+  carrera pertenece la foto y responde solo con un mensaje aclaratorio, sin guardar
+  nada.
+
+**Panel admin:** la página de Carreras (`carreras.html`) muestra las fotos de
+evidencia de cada carrera como enlaces etiquetados (cliente / recogida / entrega).
+
+**Dos hallazgos de revisión corregidos durante la implementación:**
+- Riesgo de carrera duplicada en el flujo del cliente: el `try/catch` del paso de
+  evidencia envolvía también la creación de la carrera (`crearCarreraConfirmada`); si
+  algo fallaba *después* de crear la carrera, el cliente veía un mensaje de error y
+  podía reintentar, creando una carrera duplicada. Se corrigió angostando el
+  `try/catch` para que solo cubra la descarga/subida de la imagen (commit `8641b80`).
+- Un conductor que escribía texto libre (ej. "gracias") en vez de enviar una foto o
+  tocar un botón seguía cayendo en el flujo de onboarding de clientes, creando un
+  `Cliente` con nombre placeholder. Las ramas de imagen y de botones del webhook ya
+  distinguían al conductor, pero la rama de texto no — se agregó la misma detección
+  por teléfono ahí (commit `4a8c137`).
+- Adicionalmente, una revisión de seguridad automática encontró que el enlace de
+  evidencia en el panel, aunque ya escapaba HTML, no validaba el esquema de la URL
+  (podía en teoría ser `javascript:...`); se agregó `urlSegura()` para exigir
+  http/https como defensa en profundidad (commit `8804eae`, fuera del plan original
+  pero aplicado por ser un fix barato y de bajo riesgo).
+
+**Verificación (Task 5):** `npx tsc --noEmit` corre limpio, sin salida.
+
+**Qué queda pendiente:**
+- **Cuenta de Cloudinary sin configurar todavía.** Se confirmó (`grep -c CLOUDINARY
+  .env` → 0 coincidencias) que `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` y
+  `CLOUDINARY_API_SECRET` no están en el `.env` del usuario, solo en `.env.example`
+  como plantilla. Esto significa que la subida real a Cloudinary (tanto del flujo del
+  cliente como del conductor) nunca se ha ejercitado de punta a punta con credenciales
+  reales — es un pendiente esperado, no un problema de esta tarea. Antes de usar esta
+  función en producción, el dueño debe crear una cuenta de Cloudinary, configurar esas
+  tres variables en `.env`/Railway, y probar con una foto real de WhatsApp desde un
+  teléfono de cliente y desde un teléfono de conductor.
