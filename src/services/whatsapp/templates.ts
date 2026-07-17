@@ -57,6 +57,10 @@ export const MENSAJES = {
     `✅ *¡Pedido confirmado!*\n\n📋 Radicado: ${info.radicado}\n\nEstamos buscando el conductor disponible. Te avisamos en cuanto se asigne.\n\n${MENSAJES.METODOS_PAGO()}`,
   METODOS_PAGO: () =>
     `💳 *Formas de pago aceptadas:* Efectivo, Nequi o Llave.${pagoConfig.numeroNequiLlave ? `\n📲 Nequi/Llave: *${pagoConfig.numeroNequiLlave}*` : ''}`,
+  SOLICITAR_EVIDENCIA_CLIENTE: () =>
+    '📷 Si quieres, envía ahora una *foto del objeto* como evidencia (opcional). Si no, toca el botón para continuar.',
+  EVIDENCIA_CLIENTE_GUARDADA: () => '📷 Foto guardada como evidencia. ¡Gracias!',
+  EVIDENCIA_ERROR: () => 'No pudimos procesar la foto. Puedes intentar de nuevo, o continuar sin ella.',
   CARRERA_ASIGNADA: (info: { conductor: string; telefono: string }) =>
     `🛵 *¡Tu conductor está en camino!*\n\n👤 ${info.conductor}\n📱 ${info.telefono}\n\nPuedes contactarlo directamente si lo necesitas.`,
   CARRERA_CERRADA: () => '✅ *Carrera completada.* ¡Gracias por confiar en Serveloz! Escríbenos cuando necesites otro servicio.',

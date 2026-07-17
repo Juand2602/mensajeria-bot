@@ -4,6 +4,7 @@ export interface WhatsAppMessage {
   timestamp: string;
   text?: { body: string };
   location?: { latitude: number; longitude: number; name?: string; address?: string };
+  image?: { id: string; mime_type?: string };
   type: string;
   interactive?: {
     type: string;
@@ -42,6 +43,7 @@ export type ConversationState =
   | 'ESPERANDO_MOMENTO'
   | 'ESPERANDO_FECHA_HORA_PROGRAMADA'
   | 'CONFIRMACION_PRECIO'
+  | 'ESPERANDO_EVIDENCIA_CLIENTE'
   | 'ESPERANDO_ASIGNACION'
   | 'ESPERANDO_SELECCION_CARRERA_CANCELAR'
   | 'ESPERANDO_CONFIRMACION_CANCELACION'
@@ -56,6 +58,10 @@ export interface UbicacionCompartida {
   // reverse geocoding.
   nombre?: string;
   direccion?: string;
+}
+
+export interface ImagenRecibida {
+  mediaId: string;
 }
 
 export interface DireccionPendiente {

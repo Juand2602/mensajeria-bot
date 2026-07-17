@@ -55,6 +55,11 @@ export class WebhookController {
           await mensajeriaService.registrarEntrante(telefono, texto);
           await whatsappBotService.procesarMensaje(telefono, texto);
         }
+      } else if (message.type === 'image' && message.image) {
+        await mensajeriaService.registrarEntrante(telefono, '📷 Foto enviada');
+        await whatsappBotService.procesarMensaje(telefono, 'IMAGEN_RECIBIDA', false, undefined, undefined, {
+          mediaId: message.image.id,
+        });
       } else if (message.type === 'location' && message.location) {
         const { latitude, longitude, name, address } = message.location;
         await mensajeriaService.registrarEntrante(telefono, `📍 Ubicación compartida (${latitude}, ${longitude})`);

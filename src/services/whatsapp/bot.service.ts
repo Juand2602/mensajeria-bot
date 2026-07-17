@@ -6,8 +6,10 @@ import { notificacionesService } from '../notificaciones.service';
 import { mensajeriaService } from '../mensajeria.service';
 import { messageParser } from './parser.service';
 import { MENSAJES, validarNombreCompleto } from './templates';
-import { ConversationState, ConversationContext, UbicacionCompartida } from '../../types';
+import { ConversationState, ConversationContext, UbicacionCompartida, ImagenRecibida } from '../../types';
 import { botConfig } from '../../config/whatsapp';
+import { mediaService } from '../media.service';
+import { evidenciaService } from '../evidencia.service';
 
 const NOMBRE_PLACEHOLDER = 'Cliente Nuevo';
 
@@ -17,7 +19,8 @@ export class WhatsAppBotService {
     mensaje: string,
     esBoton: boolean = false,
     buttonId?: string,
-    ubicacion?: UbicacionCompartida
+    ubicacion?: UbicacionCompartida,
+    imagen?: ImagenRecibida
   ) {
     try {
       if (messageParser.esComandoCancelacion(mensaje)) {
@@ -43,7 +46,7 @@ export class WhatsAppBotService {
       const estado = conversacion.estado as ConversationState;
       const contexto: ConversationContext = JSON.parse(conversacion.contexto);
       const mensajeAProcesar = esBoton && buttonId ? buttonId : mensaje;
-      await this.procesarEstado(telefono, mensajeAProcesar, estado, contexto, conversacion.id, ubicacion);
+      await this.procesarEstado(telefono, mensajeAProcesar, estado, contexto, conversacion.id, ubicacion, imagen);
     } catch (error) {
       console.error('Error procesando mensaje:', error);
       await mensajeriaService.enviarMensaje(telefono, MENSAJES.ERROR_SERVIDOR());
@@ -110,7 +113,8 @@ export class WhatsAppBotService {
     estado: ConversationState,
     contexto: ConversationContext,
     conversacionId: string,
-    ubicacion?: UbicacionCompartida
+    ubicacion?: UbicacionCompartida,
+    imagen?: ImagenRecibida
   ) {
     switch (estado) {
       case 'ESPERANDO_NOMBRE':
@@ -135,6 +139,8 @@ export class WhatsAppBotService {
         await this.manejarFechaHoraProgramada(telefono, mensaje, contexto, conversacionId); break;
       case 'CONFIRMACION_PRECIO':
         await this.manejarConfirmacionPrecio(telefono, mensaje, contexto, conversacionId); break;
+      case 'ESPERANDO_EVIDENCIA_CLIENTE':
+        await this.manejarEvidenciaCliente(telefono, mensaje, contexto, conversacionId, imagen); break;
       case 'ESPERANDO_ASIGNACION':
         await mensajeriaService.enviarMensaje(
           telefono,
@@ -349,6 +355,47 @@ export class WhatsAppBotService {
       return;
     }
 
+    if (contexto.tipoServicio === 'DOMICILIO') {
+      await mensajeriaService.enviarMensajeConBotones(telefono, MENSAJES.SOLICITAR_EVIDENCIA_CLIENTE(), [
+        { id: 'evidencia_continuar', title: '➡️ Continuar sin foto' },
+      ]);
+      await this.actualizarConversacion(conversacionId, 'ESPERANDO_EVIDENCIA_CLIENTE', contexto);
+      return;
+    }
+
+    await this.crearCarreraConfirmada(telefono, contexto, conversacionId);
+  }
+
+  private async manejarEvidenciaCliente(
+    telefono: string,
+    mensaje: string,
+    contexto: ConversationContext,
+    conversacionId: string,
+    imagen?: ImagenRecibida
+  ) {
+    if (imagen) {
+      try {
+        const url = await mediaService.descargarYSubir(imagen.mediaId);
+        await this.crearCarreraConfirmada(telefono, contexto, conversacionId, url);
+      } catch (error) {
+        console.error('Error procesando evidencia del cliente:', error);
+        await mensajeriaService.enviarMensaje(telefono, MENSAJES.EVIDENCIA_ERROR());
+      }
+      return;
+    }
+    if (mensaje === 'evidencia_continuar' || messageParser.esNegativo(mensaje)) {
+      await this.crearCarreraConfirmada(telefono, contexto, conversacionId);
+      return;
+    }
+    await mensajeriaService.enviarMensaje(telefono, MENSAJES.OPCION_INVALIDA());
+  }
+
+  private async crearCarreraConfirmada(
+    telefono: string,
+    contexto: ConversationContext,
+    conversacionId: string,
+    evidenciaUrl?: string
+  ) {
     const cliente = await clientesService.buscarPorTelefono(telefono);
     if (!cliente) {
       await mensajeriaService.enviarMensaje(telefono, MENSAJES.ERROR_SERVIDOR());
@@ -368,6 +415,11 @@ export class WhatsAppBotService {
       fechaHoraProgramada: contexto.fechaHoraProgramada ? new Date(contexto.fechaHoraProgramada) : null,
       origen: 'WHATSAPP',
     });
+
+    if (evidenciaUrl) {
+      await evidenciaService.crear(carrera.id, 'CLIENTE', evidenciaUrl);
+      await mensajeriaService.enviarMensaje(telefono, MENSAJES.EVIDENCIA_CLIENTE_GUARDADA());
+    }
 
     await mensajeriaService.enviarMensaje(telefono, MENSAJES.CARRERA_CONFIRMADA({ radicado: carrera.radicado }));
 
