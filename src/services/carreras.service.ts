@@ -73,7 +73,7 @@ export class CarrerasService {
   }
 
   async getById(id: string) {
-    const carrera = await prisma.carrera.findUnique({ where: { id }, include: { cliente: true, conductor: true } });
+    const carrera = await prisma.carrera.findUnique({ where: { id }, include: { cliente: true, conductor: true, evidencias: true } });
     if (!carrera) throw new Error('Carrera no encontrada');
     return carrera;
   }
@@ -87,7 +87,7 @@ export class CarrerasService {
     if (filters?.estado) where.estado = filters.estado;
     if (filters?.conductorId) where.conductorId = filters.conductorId;
     if (filters?.clienteId) where.clienteId = filters.clienteId;
-    return prisma.carrera.findMany({ where, include: { cliente: true, conductor: true }, orderBy: { createdAt: 'desc' } });
+    return prisma.carrera.findMany({ where, include: { cliente: true, conductor: true, evidencias: true }, orderBy: { createdAt: 'desc' } });
   }
 
   async getActivasPorTelefono(telefono: string) {
