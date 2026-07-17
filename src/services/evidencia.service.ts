@@ -20,6 +20,20 @@ export class EvidenciaService {
     if (!pendiente) return null;
     return prisma.evidenciaFoto.update({ where: { id: pendiente.id }, data: { tipo } });
   }
+
+  // Un conductor puede también ser cliente (ej. el dueño, que a veces hace de
+  // mensajero). Solo tiene sentido interceptar su texto libre con el mensaje
+  // fijo de "eres conductor" justo cuando tiene una foto esperando etiqueta —
+  // en cualquier otro momento su texto debe seguir el flujo normal de cliente.
+  // Se acota a carreras todavía ASIGNADA: si una foto queda sin etiquetar para
+  // siempre (ej. la carrera se completó antes de que el conductor tocara el
+  // botón), no debe bloquear el flujo de cliente de ese número indefinidamente.
+  async tienePendienteDeConductor(conductorId: string): Promise<boolean> {
+    const pendiente = await prisma.evidenciaFoto.findFirst({
+      where: { tipo: null, autor: 'CONDUCTOR', carrera: { conductorId, estado: 'ASIGNADA' } },
+    });
+    return !!pendiente;
+  }
 }
 
 export const evidenciaService = new EvidenciaService();

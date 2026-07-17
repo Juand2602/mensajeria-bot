@@ -4,6 +4,7 @@ import { whatsappBotService } from '../services/whatsapp/bot.service';
 import { mensajeriaService } from '../services/mensajeria.service';
 import { conductoresService } from '../services/conductores.service';
 import { conductorBotService } from '../services/whatsapp/conductor-bot.service';
+import { evidenciaService } from '../services/evidencia.service';
 import { whatsappMessagesService } from '../services/whatsapp/messages.service';
 import { whatsappConfig } from '../config/whatsapp';
 
@@ -57,10 +58,15 @@ export class WebhookController {
         if (texto) {
           await mensajeriaService.registrarEntrante(telefono, texto);
           const conductor = await conductoresService.buscarPorTelefono(telefono);
-          if (conductor) {
+          // Un conductor también puede ser cliente (ej. el dueño, que a veces
+          // hace de mensajero) — solo se le responde con el mensaje fijo de
+          // conductor si tiene una foto esperando etiqueta en ese momento; si
+          // no, su texto sigue el flujo normal de cliente sin restricción.
+          const tienePendiente = conductor && (await evidenciaService.tienePendienteDeConductor(conductor.id));
+          if (tienePendiente) {
             await whatsappMessagesService.enviarMensaje(
               telefono,
-              '📷 Puedes enviarme una foto de evidencia cuando quieras. Si necesitas hablar sobre una carrera, contacta al dueño directamente.'
+              '📷 Tienes una foto pendiente de etiquetar — toca "Recogida" o "Entrega" en el mensaje anterior.'
             );
           } else {
             await whatsappBotService.procesarMensaje(telefono, texto);
