@@ -18,6 +18,14 @@ export class MessageParserService {
     return ['cancelar', 'salir', 'exit', 'atras', 'volver'].includes(n);
   }
 
+  // A diferencia de esComandoCancelacion (coincidencia exacta), aquí se busca la
+  // frase dentro del mensaje completo — el cliente suele escribirlo con más
+  // contexto alrededor ("necesito hablar con alguien porque...").
+  esSolicitudAyudaHumana(texto: string): boolean {
+    const n = this.normalizarRespuesta(texto);
+    return ['asesor', 'agente', 'hablar con alguien', 'hablar con una persona', 'persona real', 'atencion humana', 'humano'].some(f => n.includes(f));
+  }
+
   parsearOpcionNumerica(texto: string, max: number): number | null {
     const textoLimpio = texto.replace(/[^\d\s]/g, '').trim();
     const numero = parseInt(textoLimpio);

@@ -56,9 +56,14 @@ export class WebhookController {
           await whatsappBotService.procesarMensaje(telefono, texto);
         }
       } else if (message.type === 'location' && message.location) {
-        const { latitude, longitude } = message.location;
+        const { latitude, longitude, name, address } = message.location;
         await mensajeriaService.registrarEntrante(telefono, `📍 Ubicación compartida (${latitude}, ${longitude})`);
-        await whatsappBotService.procesarMensaje(telefono, 'UBICACION_COMPARTIDA', false, undefined, { lat: latitude, lng: longitude });
+        await whatsappBotService.procesarMensaje(telefono, 'UBICACION_COMPARTIDA', false, undefined, {
+          lat: latitude,
+          lng: longitude,
+          nombre: name,
+          direccion: address,
+        });
       } else if (message.type === 'interactive') {
         const reply = message.interactive?.button_reply || message.interactive?.list_reply;
         if (reply) {

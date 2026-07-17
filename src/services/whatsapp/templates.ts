@@ -1,3 +1,5 @@
+import { pagoConfig } from '../../config/whatsapp';
+
 export function generarRadicado(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let codigo = '';
@@ -33,19 +35,28 @@ export const MENSAJES = {
   BIENVENIDA: () => '🛵 *¡Hola! Soy el asistente de Serveloz.*\n\n¿Qué necesitas hoy?',
   SOLICITAR_NOMBRE: () => '🛵 Antes de continuar, ¿cuál es tu *nombre completo*?',
   NOMBRE_INVALIDO: () => '🛵 Por favor escribe tu nombre completo (nombre y apellido).',
-  SOLICITAR_REFERIDO: () => '¿Alguien te recomendó Serveloz? Si es así, escribe su nombre o número. Si no, escribe *"no"*.',
+  MENU_PRINCIPAL: () => '¿Qué necesitas hoy?',
+  INFO_REFERIDOS: () =>
+    '🎁 *Programa de referidos*\n\nInvita a un amigo a pedir con Serveloz. Cuando haga su primer pedido y escriba tu nombre o tu número aquí, tú ganas un *20% de descuento* en tu próxima carrera.\n\n¿Alguien te recomendó *a ti*? Escribe su nombre o número. Si no, escribe *"no"*.',
+  INFO_REFERIDOS_YA_REGISTRADO: () => 'Ya tienes registrado quién te recomendó Serveloz — ¡gracias! 🎉',
   SOLICITAR_TIPO_SERVICIO: () => '¿Qué servicio necesitas?',
-  SOLICITAR_RECOGIDA: () => '📍 Escribe la *dirección de recogida* o comparte tu ubicación.',
+  SOLICITAR_RECOGIDA: () =>
+    '📍 Escribe la *dirección de recogida* (ej: "Calle 57 #27-30") o comparte tu ubicación 📎 — ambas opciones funcionan igual de bien.',
   CONFIRMAR_DIRECCION: (direccion: string) => `Encontramos esta dirección:\n\n📍 *${direccion}*\n\n¿Es correcta?`,
   DIRECCION_NO_ENCONTRADA: () => '🛵 No pude encontrar esa dirección. Intenta escribirla de nuevo (ej: "Cra 27 #45-12") o comparte tu ubicación 📍.',
-  SOLICITAR_DESTINO: () => '📍 Ahora escribe la *dirección de destino* o comparte la ubicación.',
+  SOLICITAR_DESTINO: () =>
+    '📍 Ahora escribe la *dirección de destino* (ej: "Carrera 33 #45-10") o comparte tu ubicación 📎.',
+  SUGERIR_UBICACION_EXACTA: (campo: 'recogida' | 'destino') =>
+    `📍 Seguimos sin encontrar bien la dirección de ${campo}. Para más precisión, comparte tu ubicación (📎 → Ubicación).\n\nSi no estás en ese lugar exacto, usa la opción *"Buscar un lugar"* dentro de Ubicación para buscarlo y enviarlo, en vez de tu posición actual.`,
   SOLICITAR_MOMENTO: () => '¿Para cuándo necesitas el servicio?',
   SOLICITAR_FECHA_HORA_PROGRAMADA: () => '📅 Escribe la fecha y hora (ej: *"mañana 3:00pm"* o *"25/12 10:00am"*).',
   FECHA_PROGRAMADA_INVALIDA: () => 'No entendí la fecha/hora. Intenta de nuevo, por ejemplo: *"mañana 3:00pm"*.',
   PRECIO_CALCULADO: (info: { distanciaKm: number; precio: number; conDescuento: boolean }) =>
     `💰 *Resumen de tu carrera*\n\n📏 Distancia: ${info.distanciaKm.toFixed(1)} km\n💵 Precio: $${info.precio.toLocaleString('es-CO')}${info.conDescuento ? ' (con tu 20% de descuento por referido aplicado)' : ''}\n\n¿Confirmas el pedido?`,
   CARRERA_CONFIRMADA: (info: { radicado: string }) =>
-    `✅ *¡Pedido confirmado!*\n\n📋 Radicado: ${info.radicado}\n\nEstamos buscando el conductor disponible. Te avisamos en cuanto se asigne.`,
+    `✅ *¡Pedido confirmado!*\n\n📋 Radicado: ${info.radicado}\n\nEstamos buscando el conductor disponible. Te avisamos en cuanto se asigne.\n\n${MENSAJES.METODOS_PAGO()}`,
+  METODOS_PAGO: () =>
+    `💳 *Formas de pago aceptadas:* Efectivo, Nequi o Llave.${pagoConfig.numeroNequiLlave ? `\n📲 Nequi/Llave: *${pagoConfig.numeroNequiLlave}*` : ''}`,
   CARRERA_ASIGNADA: (info: { conductor: string; telefono: string }) =>
     `🛵 *¡Tu conductor está en camino!*\n\n👤 ${info.conductor}\n📱 ${info.telefono}\n\nPuedes contactarlo directamente si lo necesitas.`,
   CARRERA_CERRADA: () => '✅ *Carrera completada.* ¡Gracias por confiar en Serveloz! Escríbenos cuando necesites otro servicio.',
@@ -57,5 +68,6 @@ export const MENSAJES = {
   RADICADO_NO_ENCONTRADO: () => 'No encontramos una carrera activa con ese radicado.',
   OPCION_INVALIDA: () => 'No entendí tu respuesta. Por favor intenta de nuevo.',
   ERROR_SERVIDOR: () => '🛵 Tuvimos un problema procesando tu solicitud. Por favor intenta de nuevo en un momento.',
+  SOLICITUD_AYUDA_HUMANA: () => '🙋 Listo, ya avisamos al equipo de Serveloz para que te atienda personalmente. En un momento te escriben por aquí mismo.',
   DESPEDIDA: () => '¡Gracias por escribirnos! Cuando necesites un domicilio o mototaxi, aquí estamos. 🛵',
 };

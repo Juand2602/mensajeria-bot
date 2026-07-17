@@ -32,6 +32,7 @@ export interface WhatsAppWebhookPayload {
 export type ConversationState =
   | 'INICIAL'
   | 'ESPERANDO_NOMBRE'
+  | 'MENU_PRINCIPAL'
   | 'ESPERANDO_REFERIDO'
   | 'ESPERANDO_TIPO_SERVICIO'
   | 'ESPERANDO_RECOGIDA'
@@ -46,6 +47,17 @@ export type ConversationState =
   | 'ESPERANDO_CONFIRMACION_CANCELACION'
   | 'COMPLETADA';
 
+export interface UbicacionCompartida {
+  lat: number;
+  lng: number;
+  // Presentes solo si el cliente usó "Buscar un lugar" dentro del selector de
+  // ubicación de WhatsApp en vez de enviar su posición actual — en ese caso
+  // WhatsApp ya manda el nombre/dirección del lugar, sin necesidad de
+  // reverse geocoding.
+  nombre?: string;
+  direccion?: string;
+}
+
 export interface DireccionPendiente {
   direccionTexto?: string;
   direccionFormateada?: string;
@@ -59,6 +71,8 @@ export interface ConversationContext {
   tipoServicio?: 'DOMICILIO' | 'MOTOTAXI';
   recogida?: DireccionPendiente;
   destino?: DireccionPendiente;
+  intentosRecogida?: number;
+  intentosDestino?: number;
   fechaHoraProgramada?: string;
   distanciaKm?: number;
   precio?: number;

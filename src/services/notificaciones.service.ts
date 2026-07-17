@@ -4,27 +4,28 @@ import { carrerasService } from './carreras.service';
 import { MENSAJES } from './whatsapp/templates';
 import { botConfig } from '../config/whatsapp';
 
+function nombreTipoServicio(tipoServicio: string): string {
+  return tipoServicio === 'DOMICILIO' ? 'Domicilio' : 'Mototaxi';
+}
+
 export class NotificacionesService {
   async notificarNuevaSolicitud(carreraId: string) {
     const carrera = await carrerasService.getById(carreraId);
     const telefonoAdmin = process.env.ADMINISTRADOR_TELEFONO;
     if (!telefonoAdmin) return;
 
-    const mensaje = `🆕 *NUEVA SOLICITUD*
-
-📋 Radicado: ${carrera.radicado}
-👤 Cliente: ${carrera.cliente.nombre} (${carrera.cliente.telefono})
-🚦 Servicio: ${carrera.tipoServicio}
-📍 Recogida: ${carrera.direccionRecogida}
-🏁 Destino: ${carrera.direccionDestino}
-📏 Distancia: ${carrera.distanciaKm.toFixed(1)} km
-💰 Precio: $${carrera.precio.toLocaleString('es-CO')}
-${carrera.fechaHoraProgramada ? `📅 Programada: ${carrera.fechaHoraProgramada.toLocaleString('es-CO')}` : '🕐 Para ahora mismo'}
-
-Ingresa al panel para asignar conductor.`;
-
     try {
-      await whatsappMessagesService.enviarMensaje(telefonoAdmin, mensaje);
+      await whatsappMessagesService.enviarPlantilla(telefonoAdmin, 'nueva_solicitud_admin', 'es', [
+        carrera.radicado,
+        carrera.cliente.nombre,
+        carrera.cliente.telefono,
+        nombreTipoServicio(carrera.tipoServicio),
+        carrera.direccionRecogida,
+        carrera.direccionDestino,
+        carrera.distanciaKm.toFixed(1),
+        `$${carrera.precio.toLocaleString('es-CO')}`,
+        carrera.fechaHoraProgramada ? carrera.fechaHoraProgramada.toLocaleString('es-CO') : 'Para ahora mismo',
+      ]);
     } catch (e) { console.error('Error notificando nueva solicitud al dueño:', e); }
   }
 
@@ -33,9 +34,11 @@ Ingresa al panel para asignar conductor.`;
     if (!carrera.conductor) return;
 
     try {
-      await whatsappMessagesService.enviarPlantilla(carrera.conductor.telefono, 'nueva_carrera_conductor', 'es', [
+      await whatsappMessagesService.enviarPlantilla(carrera.conductor.telefono, 'nueva_carrera_mensajero', 'es', [
         carrera.conductor.nombre,
         carrera.cliente.nombre,
+        carrera.cliente.telefono,
+        nombreTipoServicio(carrera.tipoServicio),
         carrera.direccionRecogida,
         carrera.direccionDestino,
         `$${carrera.precio.toLocaleString('es-CO')}`,
@@ -62,6 +65,21 @@ Ingresa al panel para asignar conductor.`;
         await mensajeriaService.enviarMensaje(referidorTelefono, MENSAJES.DESCUENTO_GANADO());
       } catch (e) { console.error('Error notificando descuento de referido:', e); }
     }
+  }
+
+  // Sin plantilla aprobada por Meta para este caso todavía — usa texto libre, así
+  // que solo llega si el dueño le ha escrito al bot en las últimas 24h. Si ese
+  // deja de cumplirse en la práctica, conviene pedir una plantilla como la de
+  // nueva_solicitud_admin para este aviso también.
+  async notificarSolicitudAyudaHumana(telefonoCliente: string, nombreCliente: string) {
+    const telefonoAdmin = process.env.ADMINISTRADOR_TELEFONO;
+    if (!telefonoAdmin) return;
+    try {
+      await whatsappMessagesService.enviarMensaje(
+        telefonoAdmin,
+        `🙋 *${nombreCliente}* (${telefonoCliente}) pidió hablar con una persona. La conversación ya quedó en modo manual — respóndele desde el panel (Conversaciones).`
+      );
+    } catch (e) { console.error('Error notificando solicitud de ayuda humana:', e); }
   }
 
   async avisarCarrerasProgramadas() {
