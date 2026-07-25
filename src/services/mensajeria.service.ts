@@ -40,6 +40,12 @@ export class MensajeriaService {
     await this.registrarSaliente(telefono, `📍 Ubicación enviada: ${nombre || ''} ${direccion || ''}`.trim(), 'BOT');
     return resultado;
   }
+
+  async enviarImagen(telefono: string, url: string, caption: string): Promise<any> {
+    const resultado = await whatsappMessagesService.enviarImagen(telefono, url, caption);
+    await this.registrarSaliente(telefono, `📷 ${caption}`, 'BOT');
+    return resultado;
+  }
 }
 
 export const mensajeriaService = new MensajeriaService();

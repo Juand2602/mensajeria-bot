@@ -87,6 +87,15 @@ export class WhatsAppMessagesService {
     });
   }
 
+  async enviarImagen(telefono: string, url: string, caption: string): Promise<any> {
+    return this.sendRequest('messages', {
+      messaging_product: 'whatsapp',
+      to: telefono,
+      type: 'image',
+      image: { link: url, caption },
+    });
+  }
+
   async enviarPlantilla(telefono: string, nombrePlantilla: string, idioma: string, parametros: string[]): Promise<any> {
     return this.sendRequest('messages', {
       messaging_product: 'whatsapp',
