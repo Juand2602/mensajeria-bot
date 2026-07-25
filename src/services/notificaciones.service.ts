@@ -47,10 +47,16 @@ export class NotificacionesService {
     } catch (e) { console.error('Error notificando al conductor:', e); }
 
     try {
-      await mensajeriaService.enviarMensaje(
-        carrera.cliente.telefono,
-        `🛵 Tu conductor es *${carrera.conductor.nombre}* (${carrera.conductor.telefono}). ¡Ya va en camino!`
-      );
+      const c = carrera.conductor;
+      if (c.fotoUrl && c.tipoVehiculo && c.marca && c.linea && c.modelo && c.placa) {
+        const caption = `🛵 Tu conductor es *${c.nombre}*\n📞 ${c.telefono}\n🏍️ ${c.tipoVehiculo} · ${c.marca} ${c.linea} ${c.modelo}\n🔖 Placa: ${c.placa}\n¡Ya va en camino!`;
+        await mensajeriaService.enviarImagen(carrera.cliente.telefono, c.fotoUrl, caption);
+      } else {
+        await mensajeriaService.enviarMensaje(
+          carrera.cliente.telefono,
+          `🛵 Tu conductor es *${c.nombre}* (${c.telefono}). ¡Ya va en camino!`
+        );
+      }
     } catch (e) { console.error('Error notificando asignación al cliente:', e); }
   }
 
