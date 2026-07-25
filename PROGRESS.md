@@ -256,7 +256,9 @@ evidencia de cada carrera como enlaces etiquetados (cliente / recogida / entrega
 Se agregó una ficha de vehículo con foto a cada `Conductor`, siguiendo el mismo proceso
 de las etapas anteriores (spec de diseño → plan de implementación de 6 tareas →
 ejecución con subagentes → revisión), ver
-`.superpowers/sdd/task-6-brief.md` y los commits `bdf99ca`..`7b0ab5b`.
+`docs/superpowers/specs/2026-07-25-ficha-vehiculo-conductor-design.md`,
+`docs/superpowers/plans/2026-07-25-ficha-vehiculo-conductor-implementation.md` y los
+commits `bdf99ca`..`7b0ab5b`.
 
 **Modelo de datos:** 6 columnas nuevas y opcionales (`String?`) en `Conductor`:
 `tipoVehiculo`, `marca`, `linea`, `modelo`, `placa`, `fotoUrl`. Se dejaron nullable a
