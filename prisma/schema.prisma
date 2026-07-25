@@ -40,6 +40,13 @@ model Conductor {
   activo    Boolean  @default(true)
   notas     String?
 
+  tipoVehiculo String?
+  marca        String?
+  linea        String?
+  modelo       String?
+  placa        String?
+  fotoUrl      String?
+
   carreras Carrera[]
 
   createdAt DateTime @default(now())

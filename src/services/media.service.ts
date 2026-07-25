@@ -40,6 +40,17 @@ export class MediaService {
       uploadStream.end(Buffer.from(archivo.data));
     });
   }
+
+  // Sube una imagen ya codificada en base64 (data URI, ej. desde un <input
+  // type="file"> del panel admin) directamente a Cloudinary, sin pasar por la
+  // Graph API de WhatsApp.
+  async subirBase64(base64: string, folder: string): Promise<string> {
+    if (!cloudinaryConfig.cloudName || !cloudinaryConfig.apiKey || !cloudinaryConfig.apiSecret) {
+      throw new Error('Cloudinary no está configurado (faltan CLOUDINARY_CLOUD_NAME/CLOUDINARY_API_KEY/CLOUDINARY_API_SECRET)');
+    }
+    const resultado = await cloudinary.uploader.upload(base64, { folder });
+    return resultado.secure_url;
+  }
 }
 
 export const mediaService = new MediaService();
