@@ -83,6 +83,21 @@
         <input id="c_nombre" placeholder="Nombre" class="w-full bg-canvas border border-line rounded-lg px-3 py-2" required>
         <input id="c_telefono" placeholder="Teléfono (573001234567)" class="w-full bg-canvas border border-line rounded-lg px-3 py-2" required>
         <textarea id="c_notas" placeholder="Notas (opcional)" rows="2" class="w-full bg-canvas border border-line rounded-lg px-3 py-2 resize-none"></textarea>
+        <select id="c_tipoVehiculo" class="w-full bg-canvas border border-line rounded-lg px-3 py-2" required>
+          <option value="">Tipo de vehículo</option>
+          <option value="Motocicleta">Motocicleta</option>
+          <option value="Automóvil">Automóvil</option>
+          <option value="Bicicleta">Bicicleta</option>
+        </select>
+        <input id="c_marca" placeholder="Marca (ej. Bajaj)" class="w-full bg-canvas border border-line rounded-lg px-3 py-2" required>
+        <input id="c_linea" placeholder="Línea (ej. Boxer CT 100)" class="w-full bg-canvas border border-line rounded-lg px-3 py-2" required>
+        <input id="c_modelo" placeholder="Modelo / año (ej. 2014)" class="w-full bg-canvas border border-line rounded-lg px-3 py-2" required>
+        <input id="c_placa" placeholder="Placa" class="w-full bg-canvas border border-line rounded-lg px-3 py-2" required>
+        <div>
+          <label class="block text-sm text-gray-400 mb-1">Foto del conductor</label>
+          <input id="c_foto" type="file" accept="image/*" class="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-sm">
+          <img id="c_fotoPreview" class="hidden mt-2 h-20 w-20 object-cover rounded-lg border border-line">
+        </div>
         <p id="c_error" class="text-red-400 text-sm hidden"></p>
         <div class="flex gap-2 justify-end pt-2">
           <button type="button" onclick="cerrarModalConductor()" class="px-4 py-2 rounded-lg text-gray-300">Cancelar</button>
@@ -111,19 +126,51 @@
     let conductores = [];
     let conductorEditandoId = null;
 
+    let fotoBase64Actual = null;
+
     function abrirModalConductor(conductor) {
       conductorEditandoId = conductor ? conductor.id : null;
+      fotoBase64Actual = null;
       document.getElementById('modalConductorTitulo').textContent = conductor ? 'Editar conductor' : 'Nuevo conductor';
       document.getElementById('c_nombre').value = conductor ? conductor.nombre : '';
       document.getElementById('c_telefono').value = conductor ? conductor.telefono : '';
       document.getElementById('c_notas').value = conductor && conductor.notas ? conductor.notas : '';
+      document.getElementById('c_tipoVehiculo').value = conductor && conductor.tipoVehiculo ? conductor.tipoVehiculo : '';
+      document.getElementById('c_marca').value = conductor && conductor.marca ? conductor.marca : '';
+      document.getElementById('c_linea').value = conductor && conductor.linea ? conductor.linea : '';
+      document.getElementById('c_modelo').value = conductor && conductor.modelo ? conductor.modelo : '';
+      document.getElementById('c_placa').value = conductor && conductor.placa ? conductor.placa : '';
+      document.getElementById('c_foto').value = '';
+      const preview = document.getElementById('c_fotoPreview');
+      if (conductor && conductor.fotoUrl) {
+        preview.src = conductor.fotoUrl;
+        preview.classList.remove('hidden');
+      } else {
+        preview.classList.add('hidden');
+      }
       document.getElementById('c_error').classList.add('hidden');
       document.getElementById('modalConductor').classList.remove('hidden');
     }
+
+    document.getElementById('c_foto').addEventListener('change', (e) => {
+      const archivo = e.target.files[0];
+      if (!archivo) { fotoBase64Actual = null; return; }
+      const reader = new FileReader();
+      reader.onload = () => {
+        fotoBase64Actual = reader.result;
+        const preview = document.getElementById('c_fotoPreview');
+        preview.src = fotoBase64Actual;
+        preview.classList.remove('hidden');
+      };
+      reader.readAsDataURL(archivo);
+    });
+
     function cerrarModalConductor() {
       document.getElementById('modalConductor').classList.add('hidden');
       document.getElementById('formConductor').reset();
+      document.getElementById('c_fotoPreview').classList.add('hidden');
       conductorEditandoId = null;
+      fotoBase64Actual = null;
     }
 
     document.getElementById('formConductor').addEventListener('submit', async (e) => {
@@ -134,7 +181,18 @@
         nombre: document.getElementById('c_nombre').value,
         telefono: document.getElementById('c_telefono').value,
         notas: document.getElementById('c_notas').value || null,
+        tipoVehiculo: document.getElementById('c_tipoVehiculo').value,
+        marca: document.getElementById('c_marca').value,
+        linea: document.getElementById('c_linea').value,
+        modelo: document.getElementById('c_modelo').value,
+        placa: document.getElementById('c_placa').value,
       };
+      if (fotoBase64Actual) body.fotoBase64 = fotoBase64Actual;
+      if (!conductorEditandoId && !fotoBase64Actual) {
+        errorEl.textContent = 'La foto del conductor es obligatoria';
+        errorEl.classList.remove('hidden');
+        return;
+      }
       try {
         const response = conductorEditandoId
           ? await authFetch(`/api/admin/conductores/${conductorEditandoId}`, { method: 'PUT', body: JSON.stringify(body) })
@@ -156,6 +214,19 @@
       cargar();
     }
 
+    // Las URLs de foto vienen de Cloudinary (secure_url), pero se valida el
+    // esquema igual antes de usarlas en un atributo src: esc() neutraliza inyección
+    // de HTML/atributos, pero no un valor tipo "javascript:..." — eso solo lo evita
+    // exigir que el esquema sea http/https.
+    function urlSegura(valor) {
+      try {
+        const url = new URL(valor);
+        return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : '#';
+      } catch {
+        return '#';
+      }
+    }
+
     async function abrirDetalles(id) {
       const conductor = conductores.find(c => c.id === id);
       if (!conductor) return;
@@ -173,6 +244,13 @@
           <div class="text-gray-400">${esc(conductor.telefono)}</div>
           <div class="text-gray-400">Registrado: ${new Date(conductor.createdAt).toLocaleDateString('es-CO')}</div>
           <div class="text-gray-400">${conductor.notas ? esc(conductor.notas) : 'Sin notas.'}</div>
+        </div>
+        <div class="flex gap-3 items-start mb-4 bg-canvas rounded-lg border border-line p-3">
+          ${conductor.fotoUrl ? `<img src="${esc(urlSegura(conductor.fotoUrl))}" alt="Foto de ${esc(conductor.nombre)}" class="h-16 w-16 object-cover rounded-lg shrink-0">` : ''}
+          <div class="text-sm text-gray-300 space-y-0.5">
+            ${conductor.tipoVehiculo ? `<div>🏍️ ${esc(conductor.tipoVehiculo)} · ${esc(conductor.marca || '')} ${esc(conductor.linea || '')} ${esc(conductor.modelo || '')}</div>` : '<div class="text-gray-500">Ficha de vehículo incompleta — edítalo para completarla.</div>'}
+            ${conductor.placa ? `<div>🔖 Placa: ${esc(conductor.placa)}</div>` : ''}
+          </div>
         </div>
         <div class="grid grid-cols-2 gap-2 mb-4">
           <div class="bg-canvas rounded-lg border border-line px-3 py-2">
