@@ -49,7 +49,7 @@ export class NotificacionesService {
     try {
       const c = carrera.conductor;
       if (c.fotoUrl && c.tipoVehiculo && c.marca && c.linea && c.modelo && c.placa) {
-        const caption = `🛵 Tu conductor es *${c.nombre}*\n📞 ${c.telefono}\n🏍️ ${c.tipoVehiculo} · ${c.marca} ${c.linea} ${c.modelo}\n🔖 Placa: ${c.placa}\n¡Ya va en camino!`;
+        const caption = `🛵 Tu conductor es *${c.nombre}*\nTelefono:: ${c.telefono}\n ${c.tipoVehiculo}: ${c.marca} ${c.linea} ${c.modelo}\n Placa: ${c.placa}\n¡Ya va en camino!`;
         await mensajeriaService.enviarImagen(carrera.cliente.telefono, c.fotoUrl, caption);
       } else {
         await mensajeriaService.enviarMensaje(
