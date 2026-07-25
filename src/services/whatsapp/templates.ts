@@ -41,11 +41,11 @@ export const MENSAJES = {
   INFO_REFERIDOS_YA_REGISTRADO: () => 'Ya tienes registrado quién te recomendó Serveloz — ¡gracias! 🎉',
   SOLICITAR_TIPO_SERVICIO: () => '¿Qué servicio necesitas?',
   SOLICITAR_RECOGIDA: () =>
-    '📍 Escribe la *dirección de recogida* (ej: "Calle 57 #27-30") o comparte tu ubicación 📎 — ambas opciones funcionan igual de bien.',
+    '📍 Escribe la *dirección de recogida* (ej: "Calle 57 #27-30" o "Megamall") o comparte tu ubicación 📎 — ambas opciones funcionan igual de bien.',
   CONFIRMAR_DIRECCION: (direccion: string) => `Encontramos esta dirección:\n\n📍 *${direccion}*\n\n¿Es correcta?`,
   DIRECCION_NO_ENCONTRADA: () => '🛵 No pude encontrar esa dirección. Intenta escribirla de nuevo (ej: "Cra 27 #45-12") o comparte tu ubicación 📍.',
   SOLICITAR_DESTINO: () =>
-    '📍 Ahora escribe la *dirección de destino* (ej: "Carrera 33 #45-10") o comparte tu ubicación 📎.',
+    '📍 Ahora escribe la *dirección de destino* (ej: "Carrera 33 #45-10" o "Centro Comercial Cacique") o comparte tu ubicación 📎.',
   SUGERIR_UBICACION_EXACTA: (campo: 'recogida' | 'destino') =>
     `📍 Seguimos sin encontrar bien la dirección de ${campo}. Para más precisión, comparte tu ubicación (📎 → Ubicación).\n\nSi no estás en ese lugar exacto, usa la opción *"Buscar un lugar"* dentro de Ubicación para buscarlo y enviarlo, en vez de tu posición actual.`,
   SOLICITAR_MOMENTO: () => '¿Para cuándo necesitas el servicio?',
@@ -56,7 +56,21 @@ export const MENSAJES = {
   CARRERA_CONFIRMADA: (info: { radicado: string }) =>
     `✅ *¡Pedido confirmado!*\n\n📋 Radicado: ${info.radicado}\n\nEstamos buscando el conductor disponible. Te avisamos en cuanto se asigne.\n\n${MENSAJES.METODOS_PAGO()}`,
   METODOS_PAGO: () =>
-    `💳 *Formas de pago aceptadas:* Efectivo, Nequi o Llave.${pagoConfig.numeroNequiLlave ? `\n📲 Nequi/Llave: *${pagoConfig.numeroNequiLlave}*` : ''}`,
+  `💳 *¡Puedes pagar de la forma que prefieras!*
+
+  💵 Efectivo
+  🏦 Nequi
+  🔑 Bre-B/Llave${
+    pagoConfig.numeroNequiLlave
+      ? `
+
+💰 *Nequi / Bre-b / Llave*
+━━━━━━━━━━━━━━━━
+*${pagoConfig.numeroNequiLlave}*`
+      : ""
+  }
+
+🛵 *Gracias por preferirnos.*`,
   SOLICITAR_EVIDENCIA_CLIENTE: () =>
     '📷 Si quieres, envía ahora una *foto del objeto* como evidencia (opcional). Si no, toca el botón para continuar.',
   EVIDENCIA_CLIENTE_GUARDADA: () => '📷 Foto guardada como evidencia. ¡Gracias!',

@@ -357,7 +357,7 @@ export class WhatsAppBotService {
 
     if (contexto.tipoServicio === 'DOMICILIO') {
       await mensajeriaService.enviarMensajeConBotones(telefono, MENSAJES.SOLICITAR_EVIDENCIA_CLIENTE(), [
-        { id: 'evidencia_continuar', title: '➡️ Continuar sin foto' },
+        { id: 'evidencia_continuar', title: 'Continuar sin foto' },
       ]);
       await this.actualizarConversacion(conversacionId, 'ESPERANDO_EVIDENCIA_CLIENTE', contexto);
       return;
