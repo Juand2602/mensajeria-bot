@@ -1,6 +1,6 @@
 # Serveloz — Progreso de la Etapa 1
 
-Última actualización: 2026-07-17
+Última actualización: 2026-07-25
 
 ## Qué se hizo en esta sesión
 
@@ -250,3 +250,77 @@ evidencia de cada carrera como enlaces etiquetados (cliente / recogida / entrega
   función en producción, el dueño debe crear una cuenta de Cloudinary, configurar esas
   tres variables en `.env`/Railway, y probar con una foto real de WhatsApp desde un
   teléfono de cliente y desde un teléfono de conductor.
+
+## Actualización 2026-07-25: ficha de vehículo y foto del conductor
+
+Se agregó una ficha de vehículo con foto a cada `Conductor`, siguiendo el mismo proceso
+de las etapas anteriores (spec de diseño → plan de implementación de 6 tareas →
+ejecución con subagentes → revisión), ver
+`.superpowers/sdd/task-6-brief.md` y los commits `bdf99ca`..`7b0ab5b`.
+
+**Modelo de datos:** 6 columnas nuevas y opcionales (`String?`) en `Conductor`:
+`tipoVehiculo`, `marca`, `linea`, `modelo`, `placa`, `fotoUrl`. Se dejaron nullable a
+nivel de esquema a propósito, para no romper los conductores ya existentes en la base de
+datos; la obligatoriedad se aplica a nivel de aplicación (ver más abajo).
+
+**Subida de foto:** el formulario del panel (`conductores.html`) lee el archivo elegido
+en el `<input type="file">`, lo convierte a base64 en el navegador y lo envía junto con
+el resto de los campos. `conductoresService.create`/`update` (`src/services/
+conductores.service.ts`) llaman a `mediaService.subirBase64(base64, 'serveloz/
+conductores')` — el mismo `media.service.ts` y la misma cuenta de Cloudinary que ya se
+usaban para la evidencia fotográfica de clientes/conductores (actualización anterior),
+sin dependencias nuevas — y guardan la URL resultante en `fotoUrl`.
+
+**Obligatoriedad de los 6 campos:** al crear un conductor nuevo, `tipoVehiculo`,
+`marca`, `linea`, `modelo`, `placa` y la foto son obligatorios (`create()` valida y
+lanza error si falta alguno). El mismo formulario del panel se reutiliza para editar, y
+sus campos tienen el atributo `required` del HTML sin distinguir creación de edición —
+por diseño, según el spec aprobado: esto obliga a completar la ficha de vehículo la
+primera vez que se edita un conductor antiguo que todavía no la tiene, en vez de dejarla
+vacía indefinidamente. Esto no afecta el botón separado de activar/desactivar
+(`toggleActivo`), que sigue funcionando sin pasar por este formulario.
+
+**Notificación al cliente:** `notificacionesService.notificarAsignacion` (`src/
+services/notificaciones.service.ts`) ahora revisa, al asignar un conductor a una
+carrera, si ese conductor tiene la ficha completa (`fotoUrl` + los 5 campos de
+vehículo). Si la tiene, envía al cliente **una imagen** (`mensajeriaService.
+enviarImagen`, agregado en esta misma tanda de tareas) con un caption que incluye
+nombre del conductor, teléfono en su propia línea, tipo/marca/línea/modelo de vehículo,
+placa y el cierre "¡Ya va en camino!". Si el conductor no tiene la ficha completa (todos
+los conductores creados antes de este cambio, hasta que alguien los edite), cae al
+mensaje de texto plano original, sin imagen — la asignación nunca falla por falta de
+ficha.
+
+**Verificación de esta tarea (Task 6, alcance adaptado):** no se hizo la verificación
+manual de punta a punta descrita originalmente en el plan (clicks reales en el panel,
+envío real por WhatsApp a un teléfono) porque este entorno no tiene navegador para
+automatizar de forma confiable ni un teléfono real para recibir mensajes de WhatsApp; el
+dueño prueba los cambios de UI por su cuenta. En su lugar se verificó:
+- `npx tsc --noEmit` corre limpio, sin salida, sobre todo el proyecto con los cambios de
+  las 5 tareas anteriores combinados.
+- El servidor arranca sin errores con el código combinado: se levantó `ts-node src/
+  app.ts` en un puerto alterno (el 3000 ya estaba ocupado por otra instancia del propio
+  servidor corriendo en este entorno) y quedó escuchando normalmente, con los tres logs
+  de arranque esperados y sin excepciones. Por separado, esa otra instancia en el puerto
+  3000 respondió `200 OK` tanto en `/` como en `/admin/conductores.html`.
+
+**Qué queda pendiente:**
+- Verificación real de punta a punta a través del panel admin (crear un conductor,
+  subir una foto real desde el input de archivo, asignarlo a una carrera) — no
+  verificable en este entorno, queda para el dueño.
+- Verificación real de entrega por WhatsApp del mensaje de imagen con caption a un
+  teléfono real — misma razón, queda para el dueño.
+- Dos hallazgos **menores** de la revisión de código, sin corregir, para una pasada
+  futura:
+  - `update()` en `conductores.service.ts` dejaría en blanco un campo de vehículo si
+    algún llamador llegara a enviarlo como cadena vacía explícita (`''`), porque el
+    chequeo `data.tipoVehiculo !== undefined` trata `''` como un valor válido a
+    guardar. Heredado tal cual del plan aprobado, no es una regresión de esta tarea; en
+    la práctica el único llamador es el formulario del panel, cuyos campos son
+    `required`, así que no se dispara hoy.
+  - La vista previa de foto en `abrirModalConductor` (`conductores.html`, línea con
+    `preview.src = conductor.fotoUrl`) no pasa la `fotoUrl` del conductor existente por
+    el helper `urlSegura()` de validación de esquema, a diferencia de `abrirDetalles`
+    que sí lo hace. Riesgo bajo — esa URL siempre viene de Cloudinary a través de
+    nuestro propio backend — pero es inconsistente con el patrón de defensa en
+    profundidad que el resto del archivo sigue.
