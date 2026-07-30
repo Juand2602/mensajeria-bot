@@ -97,5 +97,5 @@ export const MENSAJES = {
   SOLICITAR_ENCARGO_MANDADO: () => '🧾 Cuéntanos qué necesitas que compremos o hagamos (ej: "Comprar una caja de ganchos en cualquier papelería o Recoger un paquete").',
   SOLICITAR_ZONA_MANDADO: () =>
     '📍 Ahora dinos en qué dirección, barrio o punto de referencia prefieres que hagamos la compra/mandado (ej: "La alcadia" o "Calle 48 # 33-11") o comparte tu ubicación 📎.',
-  DESPEDIDA: () => '¡Gracias por escribirnos! Cuando necesites un domicilio o mototaxi, aquí estamos. 🛵',
+  DESPEDIDA: () => '¡Gracias por escribir a Serveloz! Cuando necesites un domicilio o mototaxi, aquí estamos. 🛵',
 };
