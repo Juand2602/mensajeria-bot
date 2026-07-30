@@ -52,18 +52,32 @@ export class WhatsAppBotService {
         return;
       }
 
-      // btn_salir se ofrece junto a btn_ayuda_humana en el aviso de
-      // inactividad y en el 2do intento fallido de dirección — se resuelve
-      // igual que el comando de texto "cancelar" (si hay una carrera ya
-      // creada se ofrece cancelarla, si no simplemente vuelve al menú).
-      if (buttonId === 'btn_salir' || messageParser.esComandoCancelacion(mensaje)) {
-        await this.manejarCancelacionGlobal(telefono);
-        return;
-      }
-
+      // Si ya no hay conversación activa (expiró, o el cliente es nuevo), se
+      // resuelve ANTES que cualquier botón especial — un botón viejo (de un
+      // aviso de inactividad que el cliente respondió mucho después, por
+      // ejemplo) ya no tiene una conversación válida detrás; antes esto podía
+      // caer en manejarCancelacionGlobal y terminar sin responder nada en
+      // absoluto. Así, cualquier botón u texto llegado sin conversación activa
+      // simplemente reinicia con el saludo y el menú, en vez de quedar mudo.
       if (!conversacion) {
         conversacion = await this.crearConversacion(telefono);
         await this.enviarSaludoInicial(telefono, conversacion.cliente, conversacion.id);
+        return;
+      }
+
+      // btn_salir siempre vuelve directo al menú principal — a diferencia del
+      // comando de texto "cancelar"/"salir" (que sí ofrece cancelar una
+      // carrera activa si existe), este botón se ofrece como una salida
+      // genérica de un flujo atascado y no debe mostrar el mensaje de "aún no
+      // tienes servicios activos para cancelar", que no tiene sentido ahí.
+      if (buttonId === 'btn_salir') {
+        await this.enviarMenuPrincipal(telefono);
+        await this.actualizarConversacion(conversacion.id, 'MENU_PRINCIPAL', {});
+        return;
+      }
+
+      if (messageParser.esComandoCancelacion(mensaje)) {
+        await this.manejarCancelacionGlobal(telefono);
         return;
       }
 
@@ -623,12 +637,13 @@ export class WhatsAppBotService {
     const activas = await carrerasService.getActivasPorTelefono(telefono);
 
     if (activas.length === 0) {
-      const conv = await this.obtenerConversacionActiva(telefono);
-      if (conv) {
-        await mensajeriaService.enviarMensaje(telefono, MENSAJES.SIN_CARRERAS_ACTIVAS());
-        await this.enviarMenuPrincipal(telefono);
-        await this.actualizarConversacion(conv.id, 'MENU_PRINCIPAL', {});
-      }
+      // Crea la conversación si hace falta en vez de quedarse callado — antes
+      // este método no respondía nada si ya no había una conversación activa
+      // (ej. el cliente escribió "cancelar" mucho después de que expirara).
+      const conv = await this.obtenerConversacionActiva(telefono) || await this.crearConversacion(telefono);
+      await mensajeriaService.enviarMensaje(telefono, MENSAJES.SIN_CARRERAS_ACTIVAS());
+      await this.enviarMenuPrincipal(telefono);
+      await this.actualizarConversacion(conv.id, 'MENU_PRINCIPAL', {});
       return;
     }
 

@@ -83,6 +83,16 @@
     </div>
   </main>
 
+  <div id="modalDetalles" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-10">
+    <div class="bg-surface rounded-xl border border-line p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto">
+      <div class="flex justify-between items-start mb-4">
+        <h2 class="text-lg font-semibold">Detalles de la carrera</h2>
+        <button onclick="cerrarModalDetalles()" class="text-gray-400 hover:text-white text-xl leading-none">&times;</button>
+      </div>
+      <div id="detallesContenido" class="space-y-2 text-sm"></div>
+    </div>
+  </div>
+
   <div id="modalManual" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center p-4">
     <div class="bg-surface rounded-xl border border-line p-6 w-full max-w-md">
       <h2 class="text-lg font-semibold mb-4">Nueva carrera manual</h2>
@@ -125,6 +135,88 @@
       } catch {
         return '#';
       }
+    }
+
+    // Colores distintos por estado para identificarlo de un vistazo en la
+    // lista — antes todos los estados usaban el mismo badge gris neutro.
+    const ESTILO_ESTADO = {
+      PENDIENTE_ASIGNACION: { clase: 'bg-yellow-500/10 border-yellow-600 text-yellow-400', label: 'Pendiente' },
+      ASIGNADA: { clase: 'bg-brand-blue/10 border-brand-blue text-brand-blue', label: 'Asignada' },
+      COMPLETADA: { clase: 'bg-green-500/10 border-green-600 text-green-400', label: 'Completada' },
+      CANCELADA: { clase: 'bg-red-500/10 border-red-600 text-red-400', label: 'Cancelada' },
+    };
+    function badgeEstado(estado) {
+      const estilo = ESTILO_ESTADO[estado] || { clase: 'bg-canvas border-line text-gray-300', label: estado };
+      return `<span class="shrink-0 text-xs font-semibold px-2 py-1 rounded-full border ${estilo.clase}">${esc(estilo.label)}</span>`;
+    }
+
+    function formatearFechaHora(iso) {
+      if (!iso) return null;
+      return new Date(iso).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' });
+    }
+
+    let carrerasActuales = [];
+
+    function verDetalles(id) {
+      const c = carrerasActuales.find(x => x.id === id);
+      if (!c) return;
+
+      const filas = [
+        ['Radicado', esc(c.radicado)],
+        ['Estado', badgeEstado(c.estado)],
+        ['Cliente', `${esc(c.cliente.nombre)} (${esc(c.cliente.telefono)})`],
+        ['Tipo de servicio', esc(c.tipoServicio)],
+        ['Origen', c.origen === 'PANEL' ? 'Creada desde el panel' : 'WhatsApp'],
+        ['Programada para', formatearFechaHora(c.fechaHoraProgramada) || 'Para ahora mismo'],
+        ['Creada', formatearFechaHora(c.createdAt)],
+        ['Recogida', esc(c.direccionRecogida)],
+        ['Destino', esc(c.direccionDestino)],
+        ['Distancia', `${c.distanciaKm.toFixed(1)} km`],
+        ['Precio', `$${c.precio.toLocaleString('es-CO')}${c.descuentoAplicado ? ' (con descuento de referido)' : ''}`],
+        ['Estado de pago', c.estado === 'CANCELADA' ? 'No aplica' : esc(c.estadoPago)],
+      ];
+
+      if (c.notas) filas.push(['Encargo', esc(c.notas)]);
+
+      if (c.conductor) {
+        const vehiculo = [c.conductor.tipoVehiculo, c.conductor.marca, c.conductor.linea, c.conductor.modelo]
+          .filter(Boolean).join(' ');
+        filas.push(['Conductor', `${esc(c.conductor.nombre)} (${esc(c.conductor.telefono)})`]);
+        if (vehiculo) filas.push(['Vehículo', esc(vehiculo) + (c.conductor.placa ? ` — Placa ${esc(c.conductor.placa)}` : '')]);
+      }
+
+      if (c.estado === 'CANCELADA') {
+        filas.push(['Motivo de cancelación', c.motivoCancelacion ? esc(c.motivoCancelacion) : 'No especificado']);
+      }
+
+      let html = filas.map(([label, valor]) => `
+        <div class="flex justify-between gap-4 py-1.5 border-b border-line last:border-0">
+          <span class="text-gray-500 shrink-0">${label}</span>
+          <span class="text-right">${valor}</span>
+        </div>
+      `).join('');
+
+      if (c.evidencias && c.evidencias.length > 0) {
+        html += `
+          <div class="pt-2">
+            <div class="text-gray-500 mb-1.5">Evidencias</div>
+            <div class="flex flex-wrap gap-2">
+              ${c.evidencias.map(ev => `
+                <a href="${esc(urlSegura(ev.url))}" target="_blank" rel="noopener" class="text-xs px-2 py-1 rounded-lg border border-line text-gray-300 hover:border-brand-blue">
+                  📷 ${ev.autor === 'CLIENTE' ? 'Cliente' : ev.tipo === 'RECOGIDA' ? 'Recogida' : ev.tipo === 'ENTREGA' ? 'Entrega' : 'Conductor'}
+                </a>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      document.getElementById('detallesContenido').innerHTML = html;
+      document.getElementById('modalDetalles').classList.remove('hidden');
+    }
+
+    function cerrarModalDetalles() {
+      document.getElementById('modalDetalles').classList.add('hidden');
     }
 
     async function cargarConductoresSelect() {
@@ -202,6 +294,7 @@
       const conductores = await cargarConductoresSelect();
       const url = filtroActual ? `/api/admin/carreras?estado=${filtroActual}` : '/api/admin/carreras';
       const carreras = await (await authFetch(url)).json();
+      carrerasActuales = carreras;
       const cont = document.getElementById('listaCarreras');
 
       cont.innerHTML = carreras.length === 0
@@ -213,7 +306,7 @@
                 <div class="font-semibold truncate">${esc(c.cliente.nombre)} <span class="text-gray-500 font-normal">(${esc(c.cliente.telefono)})</span></div>
                 <div class="text-gray-500 text-xs mt-0.5">${esc(c.radicado)} · ${esc(c.tipoServicio)}</div>
               </div>
-              <span class="shrink-0 text-xs px-2 py-1 rounded-full bg-canvas border border-line">${esc(c.estado)}</span>
+              ${badgeEstado(c.estado)}
             </div>
 
             <div class="flex gap-2.5 mb-3">
@@ -231,7 +324,9 @@
             <div class="flex flex-wrap gap-2 mb-3">
               <span class="text-xs font-medium px-2 py-1 rounded-lg bg-canvas border border-line text-gray-300">${c.distanciaKm.toFixed(1)} km</span>
               <span class="text-xs font-semibold px-2 py-1 rounded-lg bg-brand-orange/10 text-brand-orange border border-brand-orange/30">$${c.precio.toLocaleString('es-CO')}</span>
-              <span class="text-xs px-2 py-1 rounded-lg border ${c.estadoPago === 'PAGADO' ? 'border-green-700 text-green-400' : 'border-line text-gray-400'}">${esc(c.estadoPago)}</span>
+              ${c.estado === 'CANCELADA'
+                ? '<span class="text-xs px-2 py-1 rounded-lg border border-line text-gray-500">Pago: no aplica</span>'
+                : `<span class="text-xs px-2 py-1 rounded-lg border ${c.estadoPago === 'PAGADO' ? 'border-green-700 text-green-400' : 'border-line text-gray-400'}">${esc(c.estadoPago)}</span>`}
             </div>
 
             ${c.evidencias && c.evidencias.length > 0 ? `
@@ -261,6 +356,7 @@
               ${['ASIGNADA', 'COMPLETADA'].includes(c.estado) && c.estadoPago !== 'PAGADO' ? `
                 <button onclick="marcarPagado('${c.id}')" class="text-sm rounded-lg px-3 py-1 border border-line hover:border-brand-orange">Marcar pagado</button>
               ` : ''}
+              <button onclick="verDetalles('${c.id}')" class="text-sm rounded-lg px-3 py-1 border border-line hover:border-brand-blue text-gray-300 ml-auto">Detalles</button>
             </div>
           </div>
         `).join('');
