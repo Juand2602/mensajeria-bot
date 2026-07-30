@@ -52,7 +52,11 @@ export class WhatsAppBotService {
         return;
       }
 
-      if (messageParser.esComandoCancelacion(mensaje)) {
+      // btn_salir se ofrece junto a btn_ayuda_humana en el aviso de
+      // inactividad y en el 2do intento fallido de dirección — se resuelve
+      // igual que el comando de texto "cancelar" (si hay una carrera ya
+      // creada se ofrece cancelarla, si no simplemente vuelve al menú).
+      if (buttonId === 'btn_salir' || messageParser.esComandoCancelacion(mensaje)) {
         await this.manejarCancelacionGlobal(telefono);
         return;
       }
@@ -66,8 +70,16 @@ export class WhatsAppBotService {
       // El botón btn_ayuda_humana se ofrece desde varios puntos del flujo
       // (aviso de inactividad, 2do intento fallido de dirección) sin importar
       // el estado actual de la conversación — por eso se resuelve aquí, antes
-      // de despachar por estado, igual que la frase libre equivalente.
-      if (buttonId === 'btn_ayuda_humana' || (!esBoton && messageParser.esSolicitudAyudaHumana(mensaje))) {
+      // de despachar por estado. Igual que el botón del menú principal, pasa
+      // primero por la confirmación (evita activar modo manual por un toque
+      // accidental); la frase libre equivalente sigue siendo directa porque
+      // ya es una afirmación explícita del cliente.
+      if (buttonId === 'btn_ayuda_humana') {
+        const contextoActual: ConversationContext = JSON.parse(conversacion.contexto);
+        await this.solicitarConfirmacionAyuda(telefono, contextoActual, conversacion.id);
+        return;
+      }
+      if (!esBoton && messageParser.esSolicitudAyudaHumana(mensaje)) {
         await this.manejarSolicitudAyudaHumana(telefono, conversacion.cliente, conversacion.id);
         return;
       }
@@ -144,15 +156,19 @@ export class WhatsAppBotService {
     } else if (mensaje === 'menu_cancelar') {
       await this.manejarCancelacionGlobal(telefono);
     } else if (mensaje === 'menu_ayuda') {
-      await mensajeriaService.enviarMensajeConBotones(telefono, MENSAJES.CONFIRMAR_AYUDA_HUMANA(), [
-        { id: 'confirmar_ayuda', title: '✅ Sí' },
-        { id: 'menu_volver', title: '❌ No' },
-      ]);
-      await this.actualizarConversacion(conversacionId, 'ESPERANDO_CONFIRMACION_AYUDA', contexto);
+      await this.solicitarConfirmacionAyuda(telefono, contexto, conversacionId);
     } else {
       await mensajeriaService.enviarMensaje(telefono, MENSAJES.OPCION_INVALIDA());
       await this.enviarMenuPrincipal(telefono);
     }
+  }
+
+  private async solicitarConfirmacionAyuda(telefono: string, contexto: ConversationContext, conversacionId: string) {
+    await mensajeriaService.enviarMensajeConBotones(telefono, MENSAJES.CONFIRMAR_AYUDA_HUMANA(), [
+      { id: 'confirmar_ayuda', title: '✅ Sí' },
+      { id: 'menu_volver', title: '❌ No' },
+    ]);
+    await this.actualizarConversacion(conversacionId, 'ESPERANDO_CONFIRMACION_AYUDA', contexto);
   }
 
   private async enviarMenuTipoServicio(telefono: string) {
@@ -304,6 +320,7 @@ export class WhatsAppBotService {
     if (intentos >= 2) {
       await mensajeriaService.enviarMensajeConBotones(telefono, MENSAJES.SUGERIR_UBICACION_EXACTA(campo), [
         { id: 'btn_ayuda_humana', title: '🙋 Hablar con asesor' },
+        { id: 'btn_salir', title: '🚪 Salir al menú' },
       ]);
     } else {
       await mensajeriaService.enviarMensaje(telefono, mensajeBase);
@@ -679,6 +696,7 @@ export async function limpiarConversacionesInactivas() {
     try {
       await mensajeriaService.enviarMensajeConBotones(c.telefono, MENSAJES.AVISO_INACTIVIDAD(), [
         { id: 'btn_ayuda_humana', title: '🙋 Hablar con asesor' },
+        { id: 'btn_salir', title: '🚪 Salir al menú' },
       ]);
     } catch (e) { console.error('Error enviando aviso de inactividad:', e); }
     await prisma.conversacion.update({ where: { id: c.id }, data: { avisoInactividadEnviado: true } });
