@@ -36,6 +36,7 @@ export type ConversationState =
   | 'MENU_PRINCIPAL'
   | 'ESPERANDO_REFERIDO'
   | 'ESPERANDO_TIPO_SERVICIO'
+  | 'ESPERANDO_ENCARGO_MANDADO'
   | 'ESPERANDO_RECOGIDA'
   | 'ESPERANDO_CONFIRMACION_RECOGIDA'
   | 'ESPERANDO_DESTINO'
@@ -47,6 +48,7 @@ export type ConversationState =
   | 'ESPERANDO_ASIGNACION'
   | 'ESPERANDO_SELECCION_CARRERA_CANCELAR'
   | 'ESPERANDO_CONFIRMACION_CANCELACION'
+  | 'ESPERANDO_CONFIRMACION_AYUDA'
   | 'COMPLETADA';
 
 export interface UbicacionCompartida {
@@ -75,6 +77,8 @@ export interface ConversationContext {
   nombre?: string;
   referidoTelefono?: string;
   tipoServicio?: 'DOMICILIO' | 'MOTOTAXI';
+  esMandado?: boolean;
+  notas?: string;
   recogida?: DireccionPendiente;
   destino?: DireccionPendiente;
   intentosRecogida?: number;

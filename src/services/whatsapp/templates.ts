@@ -79,13 +79,23 @@ export const MENSAJES = {
     `🛵 *¡Tu conductor está en camino!*\n\n👤 ${info.conductor}\n📱 ${info.telefono}\n\nPuedes contactarlo directamente si lo necesitas.`,
   CARRERA_CERRADA: () => '✅ *Carrera completada.* ¡Gracias por confiar en Serveloz! Escríbenos cuando necesites otro servicio.',
   DESCUENTO_GANADO: () => '🎉 Ganaste un 20% de descuento por referir a un nuevo cliente. Se aplicará automáticamente en tu próximo pedido.',
-  SIN_CARRERAS_ACTIVAS: () => 'No tienes carreras activas en este momento.',
+  SIN_CARRERAS_ACTIVAS: () => 'Aún no tienes servicios activos para cancelar.',
   CONFIRMAR_CANCELACION: (info: { radicado: string; destino: string }) =>
     `¿Deseas cancelar esta carrera?\n\n📋 ${info.radicado} — destino: ${info.destino}`,
   CARRERA_CANCELADA: () => '❌ Tu carrera fue cancelada.',
+  CANCELACION_NO_PERMITIDA_ASIGNADA: (info: { radicado: string }) =>
+    `🛵 La carrera ${info.radicado} ya tiene un conductor asignado y puede estar en camino, así que no podemos cancelarla por aquí.\n\nEscríbenos y te atenderá una persona para gestionar la cancelación.`,
   RADICADO_NO_ENCONTRADO: () => 'No encontramos una carrera activa con ese radicado.',
   OPCION_INVALIDA: () => 'No entendí tu respuesta. Por favor intenta de nuevo.',
   ERROR_SERVIDOR: () => '🛵 Tuvimos un problema procesando tu solicitud. Por favor intenta de nuevo en un momento.',
   SOLICITUD_AYUDA_HUMANA: () => '🙋 Listo, ya avisamos al equipo de Serveloz para que te atienda personalmente. En un momento te escriben por aquí mismo.',
+  CONFIRMAR_AYUDA_HUMANA: () => '🙋 ¿Seguro que necesitas hablar con un asesor?',
+  MODO_MANUAL_ACTIVO: () => '🙋 Seguimos gestionando tu solicitud con un asesor. En breve te contactamos por aquí mismo.',
+  AVISO_INACTIVIDAD: () => '¿Sigues ahí? Si tu pedido es especial o tienes algún inconveniente, usa el botón de abajo para hablar con un asesor.',
+  AVISO_MODO_MANUAL_INACTIVO: () => 'Nuestro equipo aún no te ha respondido. Si necesitas solicitar un nuevo servicio mientras tanto, escribe *cancelar* para volver al menú.',
+  BOT_REANUDADO: () => 'Hemos reanudado el bot para que puedas continuar con un nuevo pedido. 🛵',
+  SOLICITAR_ENCARGO_MANDADO: () => '🧾 Cuéntanos qué necesitas que compremos o hagamos (ej: "Comprar una caja de ganchos en cualquier papelería o Recoger un paquete").',
+  SOLICITAR_ZONA_MANDADO: () =>
+    '📍 Ahora dinos en qué dirección, barrio o punto de referencia prefieres que hagamos la compra/mandado (ej: "La alcadia" o "Calle 48 # 33-11") o comparte tu ubicación 📎.',
   DESPEDIDA: () => '¡Gracias por escribirnos! Cuando necesites un domicilio o mototaxi, aquí estamos. 🛵',
 };

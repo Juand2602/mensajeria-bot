@@ -23,21 +23,51 @@ export class WhatsAppBotService {
     imagen?: ImagenRecibida
   ) {
     try {
+      // El chequeo de modo manual va primero que cualquier otra cosa,
+      // incluido el comando global de cancelación — antes "cancelar" se
+      // procesaba igual aunque el dueño estuviera atendiendo la conversación
+      // manualmente, saltándose por completo la pausa del bot.
+      let conversacion = await this.obtenerConversacionActiva(telefono);
+      if (conversacion?.modoManual) {
+        // Válvula de escape: si ya se le avisó al cliente que el asesor no ha
+        // respondido (ver gestionarConversacionesInactivas), se le permite
+        // salir del modo manual escribiendo "cancelar" en vez de esperar a
+        // que expire el timeoutModoManualMinutos completo — evita que quede
+        // atrapado sin poder pedir un nuevo servicio.
+        if (conversacion.avisoInactividadEnviado && messageParser.esComandoCancelacion(mensaje)) {
+          await this.finalizarConversacion(conversacion.id);
+          const nueva = await this.crearConversacion(telefono);
+          await mensajeriaService.enviarMensaje(telefono, MENSAJES.BOT_REANUDADO());
+          await this.enviarMenuPrincipal(telefono);
+          await this.actualizarConversacion(nueva.id, 'MENU_PRINCIPAL', {});
+          return;
+        }
+        await mensajeriaService.enviarMensaje(telefono, MENSAJES.MODO_MANUAL_ACTIVO());
+        // Se refresca para que el timeoutModoManualMinutos mida tiempo sin
+        // actividad real, no tiempo desde que se activó el modo manual.
+        await prisma.conversacion.update({
+          where: { id: conversacion.id },
+          data: { lastActivity: new Date(), avisoInactividadEnviado: false },
+        });
+        return;
+      }
+
       if (messageParser.esComandoCancelacion(mensaje)) {
         await this.manejarCancelacionGlobal(telefono);
         return;
       }
 
-      let conversacion = await this.obtenerConversacionActiva(telefono);
       if (!conversacion) {
         conversacion = await this.crearConversacion(telefono);
         await this.enviarSaludoInicial(telefono, conversacion.cliente, conversacion.id);
         return;
       }
 
-      if (conversacion.modoManual) return;
-
-      if (!esBoton && messageParser.esSolicitudAyudaHumana(mensaje)) {
+      // El botón btn_ayuda_humana se ofrece desde varios puntos del flujo
+      // (aviso de inactividad, 2do intento fallido de dirección) sin importar
+      // el estado actual de la conversación — por eso se resuelve aquí, antes
+      // de despachar por estado, igual que la frase libre equivalente.
+      if (buttonId === 'btn_ayuda_humana' || (!esBoton && messageParser.esSolicitudAyudaHumana(mensaje))) {
         await this.manejarSolicitudAyudaHumana(telefono, conversacion.cliente, conversacion.id);
         return;
       }
@@ -54,7 +84,14 @@ export class WhatsAppBotService {
   }
 
   private async manejarSolicitudAyudaHumana(telefono: string, cliente: { nombre: string }, conversacionId: string) {
-    await prisma.conversacion.update({ where: { id: conversacionId }, data: { modoManual: true } });
+    // avisoInactividadEnviado se resetea explícitamente: si el cliente llegó
+    // aquí presionando el botón del aviso de inactividad normal, ese flag ya
+    // estaba en true y dejaría escapar el modoManual con "cancelar" de
+    // inmediato en vez de esperar timeoutModoManualMinutos.
+    await prisma.conversacion.update({
+      where: { id: conversacionId },
+      data: { modoManual: true, lastActivity: new Date(), avisoInactividadEnviado: false },
+    });
     await mensajeriaService.enviarMensaje(telefono, MENSAJES.SOLICITUD_AYUDA_HUMANA());
     try {
       await notificacionesService.notificarSolicitudAyudaHumana(telefono, cliente.nombre);
@@ -74,9 +111,17 @@ export class WhatsAppBotService {
   }
 
   private async enviarMenuPrincipal(telefono: string) {
+    // Un mensaje de botones de WhatsApp admite máximo 3 — se manda un segundo
+    // mensaje de seguimiento con las opciones restantes (mismo patrón que
+    // barberia-bot), todas resueltas en manejarMenuPrincipal sin importar de
+    // cuál de los dos mensajes vino el click.
     await mensajeriaService.enviarMensajeConBotones(telefono, MENSAJES.MENU_PRINCIPAL(), [
       { id: 'menu_pedir', title: '🛵 Pedir servicio' },
       { id: 'menu_referidos', title: '🎁 Referidos' },
+      { id: 'menu_cancelar', title: '❌ Cancelar servicio' },
+    ]);
+    await mensajeriaService.enviarMensajeConBotones(telefono, 'También puedes:', [
+      { id: 'menu_ayuda', title: '🙋 Hablar con asesor' },
     ]);
   }
 
@@ -91,9 +136,19 @@ export class WhatsAppBotService {
         await this.enviarMenuPrincipal(telefono);
         await this.actualizarConversacion(conversacionId, 'MENU_PRINCIPAL', contexto);
       } else {
-        await mensajeriaService.enviarMensaje(telefono, MENSAJES.INFO_REFERIDOS());
+        await mensajeriaService.enviarMensajeConBotones(telefono, MENSAJES.INFO_REFERIDOS(), [
+          { id: 'menu_volver', title: 'Volver al menú' },
+        ]);
         await this.actualizarConversacion(conversacionId, 'ESPERANDO_REFERIDO', contexto);
       }
+    } else if (mensaje === 'menu_cancelar') {
+      await this.manejarCancelacionGlobal(telefono);
+    } else if (mensaje === 'menu_ayuda') {
+      await mensajeriaService.enviarMensajeConBotones(telefono, MENSAJES.CONFIRMAR_AYUDA_HUMANA(), [
+        { id: 'confirmar_ayuda', title: '✅ Sí' },
+        { id: 'menu_volver', title: '❌ No' },
+      ]);
+      await this.actualizarConversacion(conversacionId, 'ESPERANDO_CONFIRMACION_AYUDA', contexto);
     } else {
       await mensajeriaService.enviarMensaje(telefono, MENSAJES.OPCION_INVALIDA());
       await this.enviarMenuPrincipal(telefono);
@@ -104,6 +159,7 @@ export class WhatsAppBotService {
     await mensajeriaService.enviarMensajeConBotones(telefono, MENSAJES.SOLICITAR_TIPO_SERVICIO(), [
       { id: 'tipo_domicilio', title: '📦 Domicilio' },
       { id: 'tipo_mototaxi', title: '🛵 Mototaxi' },
+      { id: 'tipo_mandado', title: '🧾 Mandado/Compra' },
     ]);
   }
 
@@ -125,6 +181,8 @@ export class WhatsAppBotService {
         await this.manejarReferido(telefono, mensaje, contexto, conversacionId); break;
       case 'ESPERANDO_TIPO_SERVICIO':
         await this.manejarTipoServicio(telefono, mensaje, contexto, conversacionId); break;
+      case 'ESPERANDO_ENCARGO_MANDADO':
+        await this.manejarEncargoMandado(telefono, mensaje, contexto, conversacionId); break;
       case 'ESPERANDO_RECOGIDA':
         await this.manejarDireccion(telefono, mensaje, contexto, conversacionId, 'recogida', ubicacion); break;
       case 'ESPERANDO_CONFIRMACION_RECOGIDA':
@@ -142,15 +200,25 @@ export class WhatsAppBotService {
       case 'ESPERANDO_EVIDENCIA_CLIENTE':
         await this.manejarEvidenciaCliente(telefono, mensaje, contexto, conversacionId, imagen); break;
       case 'ESPERANDO_ASIGNACION':
-        await mensajeriaService.enviarMensaje(
+        if (mensaje === 'menu_cancelar') {
+          await this.manejarCancelacionGlobal(telefono);
+          break;
+        }
+        // Antes no había forma visible de cancelar en este estado (solo el
+        // comando de texto oculto "cancelar", que sigue funcionando igual vía
+        // el chequeo global en procesarMensaje).
+        await mensajeriaService.enviarMensajeConBotones(
           telefono,
-          'Ya recibimos tu pedido y estamos asignando un conductor. Te avisamos apenas esté en camino. 🛵'
+          'Ya recibimos tu pedido y estamos asignando un conductor. Te avisamos apenas esté en camino. 🛵',
+          [{ id: 'menu_cancelar', title: '❌ Cancelar servicio' }]
         );
         break;
       case 'ESPERANDO_SELECCION_CARRERA_CANCELAR':
         await this.manejarSeleccionCarreraCancelar(telefono, mensaje, contexto, conversacionId); break;
       case 'ESPERANDO_CONFIRMACION_CANCELACION':
         await this.manejarConfirmacionCancelacion(telefono, mensaje, contexto, conversacionId); break;
+      case 'ESPERANDO_CONFIRMACION_AYUDA':
+        await this.manejarConfirmacionAyuda(telefono, mensaje, contexto, conversacionId); break;
       default:
         await mensajeriaService.enviarMensaje(telefono, MENSAJES.OPCION_INVALIDA());
     }
@@ -169,7 +237,7 @@ export class WhatsAppBotService {
   }
 
   private async manejarReferido(telefono: string, mensaje: string, contexto: ConversationContext, conversacionId: string) {
-    if (!messageParser.esNegativo(mensaje)) {
+    if (mensaje !== 'menu_volver' && !messageParser.esNegativo(mensaje)) {
       const cliente = await clientesService.buscarPorTelefono(telefono);
       const referidor = await clientesService.buscarReferidor(mensaje);
       if (cliente && referidor && referidor.id !== cliente.id) {
@@ -184,6 +252,19 @@ export class WhatsAppBotService {
   }
 
   private async manejarTipoServicio(telefono: string, mensaje: string, contexto: ConversationContext, conversacionId: string) {
+    if (mensaje === 'tipo_mandado') {
+      // "Mandado/Compra" es igual a un domicilio para efectos de precio y
+      // estado (misma tabla Carrera), solo cambia el flujo de conversación:
+      // primero se captura qué hay que comprar/hacer (contexto.notas), y la
+      // "recogida" pasa a ser una zona/barrio de referencia en vez de una
+      // dirección exacta — el cliente no siempre sabe en qué tienda puntual
+      // se puede conseguir lo que pide.
+      contexto.tipoServicio = 'DOMICILIO';
+      contexto.esMandado = true;
+      await mensajeriaService.enviarMensaje(telefono, MENSAJES.SOLICITAR_ENCARGO_MANDADO());
+      await this.actualizarConversacion(conversacionId, 'ESPERANDO_ENCARGO_MANDADO', contexto);
+      return;
+    }
     if (mensaje === 'tipo_domicilio') contexto.tipoServicio = 'DOMICILIO';
     else if (mensaje === 'tipo_mototaxi') contexto.tipoServicio = 'MOTOTAXI';
     else {
@@ -195,6 +276,12 @@ export class WhatsAppBotService {
     await this.actualizarConversacion(conversacionId, 'ESPERANDO_RECOGIDA', contexto);
   }
 
+  private async manejarEncargoMandado(telefono: string, mensaje: string, contexto: ConversationContext, conversacionId: string) {
+    contexto.notas = mensaje.trim();
+    await mensajeriaService.enviarMensaje(telefono, MENSAJES.SOLICITAR_ZONA_MANDADO());
+    await this.actualizarConversacion(conversacionId, 'ESPERANDO_RECOGIDA', contexto);
+  }
+
   // Cuenta intentos fallidos (geocoding sin resultado, o dirección rechazada por el
   // cliente) por campo. A partir del 2do intento fallido, se sugiere compartir
   // ubicación en vez de seguir insistiendo con texto — reescribir la misma
@@ -203,6 +290,24 @@ export class WhatsAppBotService {
     const clave = campo === 'recogida' ? 'intentosRecogida' : 'intentosDestino';
     contexto[clave] = (contexto[clave] || 0) + 1;
     return contexto[clave];
+  }
+
+  // A partir del 2do intento fallido se ofrece el botón de hablar con un
+  // asesor junto con la sugerencia de compartir ubicación — antes solo había
+  // texto, y el cliente debía conocer una palabra clave para pedir ayuda.
+  private async enviarMensajeReintentoDireccion(
+    telefono: string,
+    campo: 'recogida' | 'destino',
+    intentos: number,
+    mensajeBase: string
+  ) {
+    if (intentos >= 2) {
+      await mensajeriaService.enviarMensajeConBotones(telefono, MENSAJES.SUGERIR_UBICACION_EXACTA(campo), [
+        { id: 'btn_ayuda_humana', title: '🙋 Hablar con asesor' },
+      ]);
+    } else {
+      await mensajeriaService.enviarMensaje(telefono, mensajeBase);
+    }
   }
 
   private async manejarDireccion(
@@ -227,10 +332,7 @@ export class WhatsAppBotService {
     const resultado = await mapboxService.geocodificar(mensaje);
     if (!resultado) {
       const intentos = this.registrarIntentoFallido(contexto, campo);
-      await mensajeriaService.enviarMensaje(
-        telefono,
-        intentos >= 2 ? MENSAJES.SUGERIR_UBICACION_EXACTA(campo) : MENSAJES.DIRECCION_NO_ENCONTRADA()
-      );
+      await this.enviarMensajeReintentoDireccion(telefono, campo, intentos, MENSAJES.DIRECCION_NO_ENCONTRADA());
       await this.actualizarConversacion(conversacionId, campo === 'recogida' ? 'ESPERANDO_RECOGIDA' : 'ESPERANDO_DESTINO', contexto);
       return;
     }
@@ -264,11 +366,11 @@ export class WhatsAppBotService {
     } else if (mensaje === 'direccion_no' || messageParser.esNegativo(mensaje)) {
       delete contexto[campo];
       const intentos = this.registrarIntentoFallido(contexto, campo);
-      const mensajeReintento =
-        intentos >= 2
-          ? MENSAJES.SUGERIR_UBICACION_EXACTA(campo)
-          : campo === 'recogida' ? MENSAJES.SOLICITAR_RECOGIDA() : MENSAJES.SOLICITAR_DESTINO();
-      await mensajeriaService.enviarMensaje(telefono, mensajeReintento);
+      const mensajeBase =
+        campo === 'recogida'
+          ? (contexto.esMandado ? MENSAJES.SOLICITAR_ZONA_MANDADO() : MENSAJES.SOLICITAR_RECOGIDA())
+          : MENSAJES.SOLICITAR_DESTINO();
+      await this.enviarMensajeReintentoDireccion(telefono, campo, intentos, mensajeBase);
       await this.actualizarConversacion(conversacionId, campo === 'recogida' ? 'ESPERANDO_RECOGIDA' : 'ESPERANDO_DESTINO', contexto);
     } else {
       await mensajeriaService.enviarMensaje(telefono, MENSAJES.OPCION_INVALIDA());
@@ -416,6 +518,7 @@ export class WhatsAppBotService {
       distanciaKm: contexto.distanciaKm!,
       fechaHoraProgramada: contexto.fechaHoraProgramada ? new Date(contexto.fechaHoraProgramada) : null,
       origen: 'WHATSAPP',
+      notas: contexto.notas,
     });
 
     if (evidenciaUrl) {
@@ -425,9 +528,11 @@ export class WhatsAppBotService {
 
     await mensajeriaService.enviarMensaje(telefono, MENSAJES.CARRERA_CONFIRMADA({ radicado: carrera.radicado }));
 
-    if (!contexto.fechaHoraProgramada) {
-      try { await notificacionesService.notificarNuevaSolicitud(carrera.id); } catch (e) { console.error('Error notificando nueva solicitud:', e); }
-    }
+    // Se notifica siempre, sea inmediata o programada — antes las programadas
+    // no generaban ningún aviso al crearse y dependían solo del recordatorio
+    // cercano a la hora, dejando al dueño sin enterarse durante horas si el
+    // margen de anticipación superaba AVISO_PROGRAMADA_MINUTOS_ANTES.
+    try { await notificacionesService.notificarNuevaSolicitud(carrera.id); } catch (e) { console.error('Error notificando nueva solicitud:', e); }
 
     await this.actualizarConversacion(conversacionId, 'ESPERANDO_ASIGNACION', { carreraId: carrera.id, radicado: carrera.radicado });
   }
@@ -443,6 +548,26 @@ export class WhatsAppBotService {
       await mensajeriaService.enviarMensaje(telefono, MENSAJES.RADICADO_NO_ENCONTRADO());
       return;
     }
+
+    // Una carrera ya ASIGNADA puede tener al conductor en camino — no se
+    // permite cancelarla por el bot para no perjudicar al conductor/dueño; se
+    // deriva a atención manual en vez de ejecutar el cambio de estado.
+    if (carrera.estado === 'ASIGNADA') {
+      await mensajeriaService.enviarMensaje(telefono, MENSAJES.CANCELACION_NO_PERMITIDA_ASIGNADA({ radicado: carrera.radicado }));
+      // No se finaliza la conversación (a diferencia del resto de este método)
+      // — igual que manejarSolicitudAyudaHumana, se deja modoManual=true sobre
+      // la conversación ACTIVA para que el bot ignore mensajes futuros del
+      // cliente hasta que el dueño responda manualmente desde el panel. Si se
+      // finalizara, el siguiente mensaje del cliente crearía una conversación
+      // nueva con modoManual=false y el bot volvería a responder normal.
+      await prisma.conversacion.update({
+        where: { id: conversacionId },
+        data: { modoManual: true, lastActivity: new Date(), avisoInactividadEnviado: false },
+      });
+      try { await notificacionesService.notificarIntentoCancelacionAsignada(carrera.id); } catch (e) { console.error('Error notificando intento de cancelación:', e); }
+      return;
+    }
+
     contexto.radicado = carrera.radicado;
     contexto.carreraId = carrera.id;
     await mensajeriaService.enviarMensajeConBotones(
@@ -460,10 +585,21 @@ export class WhatsAppBotService {
     if (mensaje === 'confirmar_cancelar' || messageParser.esAfirmativo(mensaje)) {
       await carrerasService.cambiarEstado(contexto.carreraId!, 'CANCELADA', 'Cancelado por el cliente vía WhatsApp');
       await mensajeriaService.enviarMensaje(telefono, MENSAJES.CARRERA_CANCELADA());
+      try { await notificacionesService.notificarCancelacion(contexto.carreraId!, 'PENDIENTE_ASIGNACION', 'Cancelado por el cliente vía WhatsApp'); } catch (e) { console.error('Error notificando cancelación:', e); }
     } else {
       await mensajeriaService.enviarMensaje(telefono, MENSAJES.DESPEDIDA());
     }
     await this.finalizarConversacion(conversacionId);
+  }
+
+  private async manejarConfirmacionAyuda(telefono: string, mensaje: string, contexto: ConversationContext, conversacionId: string) {
+    if (mensaje === 'confirmar_ayuda' || messageParser.esAfirmativo(mensaje)) {
+      const cliente = await clientesService.buscarPorTelefono(telefono);
+      if (cliente) await this.manejarSolicitudAyudaHumana(telefono, cliente, conversacionId);
+    } else {
+      await this.enviarMenuPrincipal(telefono);
+      await this.actualizarConversacion(conversacionId, 'MENU_PRINCIPAL', contexto);
+    }
   }
 
   private async manejarCancelacionGlobal(telefono: string) {
@@ -472,8 +608,9 @@ export class WhatsAppBotService {
     if (activas.length === 0) {
       const conv = await this.obtenerConversacionActiva(telefono);
       if (conv) {
-        await mensajeriaService.enviarMensaje(telefono, MENSAJES.DESPEDIDA());
-        await this.finalizarConversacion(conv.id);
+        await mensajeriaService.enviarMensaje(telefono, MENSAJES.SIN_CARRERAS_ACTIVAS());
+        await this.enviarMenuPrincipal(telefono);
+        await this.actualizarConversacion(conv.id, 'MENU_PRINCIPAL', {});
       }
       return;
     }
@@ -509,11 +646,14 @@ export class WhatsAppBotService {
   }
 
   private async actualizarConversacion(id: string, estado: ConversationState, contexto: ConversationContext) {
-    return prisma.conversacion.update({ where: { id }, data: { estado, contexto: JSON.stringify(contexto), lastActivity: new Date() } });
+    return prisma.conversacion.update({
+      where: { id },
+      data: { estado, contexto: JSON.stringify(contexto), lastActivity: new Date(), avisoInactividadEnviado: false },
+    });
   }
 
   private async actualizarActividad(id: string) {
-    return prisma.conversacion.update({ where: { id }, data: { lastActivity: new Date() } });
+    return prisma.conversacion.update({ where: { id }, data: { lastActivity: new Date(), avisoInactividadEnviado: false } });
   }
 
   private async finalizarConversacion(id: string) {
@@ -524,10 +664,59 @@ export class WhatsAppBotService {
 export const whatsappBotService = new WhatsAppBotService();
 
 export async function limpiarConversacionesInactivas() {
-  const fechaLimite = new Date(Date.now() - botConfig.timeoutConversacion);
-  const result = await prisma.conversacion.updateMany({
-    where: { activa: true, lastActivity: { lt: fechaLimite } },
+  const ahora = Date.now();
+
+  // Aviso único de "¿sigues ahí?" para conversaciones normales, antes de que
+  // el timeoutConversacion las expire en silencio — antes el cliente podía
+  // quedarse a mitad de un flujo (ej. dando direcciones ambiguas) y
+  // desaparecer sin que nadie en Serveloz se enterara de que se perdió un
+  // pedido.
+  const umbralAvisoNormal = new Date(ahora - (botConfig.timeoutConversacion - botConfig.avisoInactividadAntesMinutos * 60000));
+  const paraAvisarNormal = await prisma.conversacion.findMany({
+    where: { activa: true, modoManual: false, avisoInactividadEnviado: false, lastActivity: { lt: umbralAvisoNormal } },
+  });
+  for (const c of paraAvisarNormal) {
+    try {
+      await mensajeriaService.enviarMensajeConBotones(c.telefono, MENSAJES.AVISO_INACTIVIDAD(), [
+        { id: 'btn_ayuda_humana', title: '🙋 Hablar con asesor' },
+      ]);
+    } catch (e) { console.error('Error enviando aviso de inactividad:', e); }
+    await prisma.conversacion.update({ where: { id: c.id }, data: { avisoInactividadEnviado: true } });
+  }
+
+  // Mismo aviso para conversaciones en modoManual, con su propio timeout más
+  // largo (timeoutModoManualMinutos) — le dice al cliente que puede escribir
+  // "cancelar" para volver al menú si el asesor no ha respondido, en vez de
+  // dejarlo atrapado indefinidamente si el admin olvidó reanudar el bot.
+  const umbralAvisoManual = new Date(
+    ahora - (botConfig.timeoutModoManualMinutos * 60000 - botConfig.avisoInactividadModoManualAntesMinutos * 60000)
+  );
+  const paraAvisarManual = await prisma.conversacion.findMany({
+    where: { activa: true, modoManual: true, avisoInactividadEnviado: false, lastActivity: { lt: umbralAvisoManual } },
+  });
+  for (const c of paraAvisarManual) {
+    try {
+      await mensajeriaService.enviarMensaje(c.telefono, MENSAJES.AVISO_MODO_MANUAL_INACTIVO());
+    } catch (e) { console.error('Error enviando aviso de modo manual inactivo:', e); }
+    await prisma.conversacion.update({ where: { id: c.id }, data: { avisoInactividadEnviado: true } });
+  }
+
+  const limiteNormal = new Date(ahora - botConfig.timeoutConversacion);
+  const normalesExpiradas = await prisma.conversacion.updateMany({
+    where: { activa: true, modoManual: false, lastActivity: { lt: limiteNormal } },
     data: { activa: false },
   });
-  if (result.count > 0) console.log(`✅ ${result.count} conversaciones inactivas limpiadas`);
+
+  // Expiración dura de modoManual: reanuda el bot solo, sin importar si fue
+  // porque el asesor nunca respondió o porque el admin olvidó pulsar
+  // "Reanudar bot" en el panel — el timeout es más largo que el normal
+  // (timeoutModoManualMinutos) para no cortar una atención humana real.
+  const limiteManual = new Date(ahora - botConfig.timeoutModoManualMinutos * 60000);
+  const manualExpiradas = await prisma.conversacion.updateMany({
+    where: { activa: true, modoManual: true, lastActivity: { lt: limiteManual } },
+    data: { activa: false },
+  });
+
+  const total = normalesExpiradas.count + manualExpiradas.count;
+  if (total > 0) console.log(`✅ ${total} conversaciones inactivas limpiadas`);
 }

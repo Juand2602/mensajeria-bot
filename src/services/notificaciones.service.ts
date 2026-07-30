@@ -26,6 +26,12 @@ export class NotificacionesService {
         `$${carrera.precio.toLocaleString('es-CO')}`,
         carrera.fechaHoraProgramada ? carrera.fechaHoraProgramada.toLocaleString('es-CO') : 'Para ahora mismo',
       ]);
+      // La plantilla no tiene un parámetro para el encargo (solo aplica al
+      // subtipo "mandado/compra" de domicilio) — se manda como texto libre
+      // aparte, dentro de la ventana de 24h que la propia plantilla abre.
+      if (carrera.notas) {
+        await mensajeriaService.enviarMensaje(telefonoAdmin, `📝 Encargo: ${carrera.notas}`);
+      }
     } catch (e) { console.error('Error notificando nueva solicitud al dueño:', e); }
   }
 
@@ -34,16 +40,36 @@ export class NotificacionesService {
     if (!carrera.conductor) return;
 
     try {
-      await whatsappMessagesService.enviarPlantilla(carrera.conductor.telefono, 'nueva_carrera_mensajero', 'es', [
-        carrera.conductor.nombre,
-        carrera.cliente.nombre,
-        carrera.cliente.telefono,
-        nombreTipoServicio(carrera.tipoServicio),
-        carrera.direccionRecogida,
-        carrera.direccionDestino,
-        `$${carrera.precio.toLocaleString('es-CO')}`,
-        carrera.radicado,
-      ]);
+      // Domicilio usa una plantilla aparte con el recordatorio de fotos de
+      // recogida/entrega ya fijo en el cuerpo — mototaxi sigue con la original.
+      const esDomicilio = carrera.tipoServicio === 'DOMICILIO';
+      const plantilla = esDomicilio ? 'nueva_carrera_mensajero_domicilio' : 'nueva_carrera_mensajero';
+      // nueva_carrera_mensajero_domicilio no lleva parámetro de tipo de
+      // servicio (ya lo dice el cuerpo fijo: "nuevo domicilio de Serveloz").
+      const params = esDomicilio
+        ? [
+            carrera.conductor.nombre,
+            carrera.cliente.nombre,
+            carrera.cliente.telefono,
+            carrera.direccionRecogida,
+            carrera.direccionDestino,
+            `$${carrera.precio.toLocaleString('es-CO')}`,
+            carrera.radicado,
+          ]
+        : [
+            carrera.conductor.nombre,
+            carrera.cliente.nombre,
+            carrera.cliente.telefono,
+            nombreTipoServicio(carrera.tipoServicio),
+            carrera.direccionRecogida,
+            carrera.direccionDestino,
+            `$${carrera.precio.toLocaleString('es-CO')}`,
+            carrera.radicado,
+          ];
+      await whatsappMessagesService.enviarPlantilla(carrera.conductor.telefono, plantilla, 'es', params);
+      if (carrera.notas) {
+        await mensajeriaService.enviarMensaje(carrera.conductor.telefono, `📝 Encargo: ${carrera.notas}`);
+      }
     } catch (e) { console.error('Error notificando al conductor:', e); }
 
     try {
@@ -60,6 +86,59 @@ export class NotificacionesService {
     } catch (e) { console.error('Error notificando asignación al cliente:', e); }
   }
 
+  async notificarCancelacion(carreraId: string, estadoPrevio: string, motivo?: string | null) {
+    const carrera = await carrerasService.getById(carreraId);
+    const telefonoAdmin = process.env.ADMINISTRADOR_TELEFONO;
+    if (!telefonoAdmin) return;
+
+    try {
+      await whatsappMessagesService.enviarPlantilla(telefonoAdmin, 'carrera_cancelada_admin', 'es', [
+        carrera.cliente.nombre,
+        carrera.cliente.telefono,
+        carrera.radicado,
+        estadoPrevio,
+        carrera.conductor?.nombre || 'Sin asignar',
+        motivo || 'No especificado',
+      ]);
+    } catch (e) { console.error('Error notificando cancelación al dueño:', e); }
+  }
+
+  // A diferencia de notificarCancelacion (carrera ya cancelada), este aviso es
+  // para cuando el cliente INTENTÓ cancelar una carrera ya asignada y el bot se
+  // lo bloqueó (la conversación queda en modo manual, ver bot.service.ts).
+  async notificarIntentoCancelacionAsignada(carreraId: string) {
+    const carrera = await carrerasService.getById(carreraId);
+    const telefonoAdmin = process.env.ADMINISTRADOR_TELEFONO;
+    if (!telefonoAdmin) return;
+    try {
+      await whatsappMessagesService.enviarPlantilla(telefonoAdmin, 'intento_cancelacion_asignada_admin', 'es', [
+        carrera.cliente.nombre,
+        carrera.cliente.telefono,
+        carrera.radicado,
+        carrera.conductor?.nombre || 'Sin asignar',
+      ]);
+    } catch (e) { console.error('Error notificando intento de cancelación de carrera asignada:', e); }
+  }
+
+  async notificarRecordatorioEjecucionConductor(carreraId: string) {
+    const carrera = await carrerasService.getById(carreraId);
+    if (!carrera.conductor || !carrera.fechaHoraProgramada) return;
+
+    try {
+      await whatsappMessagesService.enviarPlantilla(carrera.conductor.telefono, 'recordatorio_servicio_conductor', 'es', [
+        carrera.conductor.nombre,
+        carrera.fechaHoraProgramada.toLocaleString('es-CO'),
+        carrera.cliente.nombre,
+        carrera.cliente.telefono,
+        nombreTipoServicio(carrera.tipoServicio),
+        carrera.direccionRecogida,
+        carrera.direccionDestino,
+        `$${carrera.precio.toLocaleString('es-CO')}`,
+        carrera.radicado,
+      ]);
+    } catch (e) { console.error('Error notificando recordatorio de ejecución al conductor:', e); }
+  }
+
   async notificarCierre(carreraId: string, referidorTelefono?: string | null) {
     const carrera = await carrerasService.getById(carreraId);
     try {
@@ -73,27 +152,54 @@ export class NotificacionesService {
     }
   }
 
-  // Sin plantilla aprobada por Meta para este caso todavía — usa texto libre, así
-  // que solo llega si el dueño le ha escrito al bot en las últimas 24h. Si ese
-  // deja de cumplirse en la práctica, conviene pedir una plantilla como la de
-  // nueva_solicitud_admin para este aviso también.
   async notificarSolicitudAyudaHumana(telefonoCliente: string, nombreCliente: string) {
     const telefonoAdmin = process.env.ADMINISTRADOR_TELEFONO;
     if (!telefonoAdmin) return;
     try {
-      await whatsappMessagesService.enviarMensaje(
-        telefonoAdmin,
-        `🙋 *${nombreCliente}* (${telefonoCliente}) pidió hablar con una persona. La conversación ya quedó en modo manual — respóndele desde el panel (Conversaciones).`
-      );
+      await whatsappMessagesService.enviarPlantilla(telefonoAdmin, 'solicitud_ayuda_humana_admin', 'es', [
+        nombreCliente,
+        telefonoCliente,
+      ]);
     } catch (e) { console.error('Error notificando solicitud de ayuda humana:', e); }
   }
 
+  async notificarRecordatorioProgramadaAdmin(carreraId: string) {
+    const carrera = await carrerasService.getById(carreraId);
+    const telefonoAdmin = process.env.ADMINISTRADOR_TELEFONO;
+    if (!telefonoAdmin || !carrera.fechaHoraProgramada) return;
+
+    try {
+      await whatsappMessagesService.enviarPlantilla(telefonoAdmin, 'recordatorio_carrera_programada_admin', 'es', [
+        carrera.radicado,
+        carrera.fechaHoraProgramada.toLocaleString('es-CO'),
+        carrera.cliente.nombre,
+        carrera.cliente.telefono,
+        nombreTipoServicio(carrera.tipoServicio),
+        carrera.direccionRecogida,
+        carrera.direccionDestino,
+        carrera.distanciaKm.toFixed(1),
+        `$${carrera.precio.toLocaleString('es-CO')}`,
+      ]);
+    } catch (e) { console.error('Error notificando recordatorio de carrera programada al dueño:', e); }
+  }
+
+  // Dos avisos independientes, cada uno con su propio flag para no reenviar:
+  // uno al dueño si la carrera sigue sin conductor asignado (recuérdame
+  // asignarla), y otro al conductor si ya fue asignado (recuérdale que tiene
+  // un servicio pendiente, por si lo asignaste con mucha anticipación).
   async avisarCarrerasProgramadas() {
-    const limite = new Date(Date.now() + botConfig.avisoProgramadaMinutosAntes * 60000);
-    const pendientes = await carrerasService.getProgramadasPendientesDeAviso(limite);
+    const limiteAsignacion = new Date(Date.now() + botConfig.avisoProgramadaMinutosAntes * 60000);
+    const pendientes = await carrerasService.getProgramadasPendientesDeAviso(limiteAsignacion);
     for (const carrera of pendientes) {
-      await this.notificarNuevaSolicitud(carrera.id);
+      await this.notificarRecordatorioProgramadaAdmin(carrera.id);
       await carrerasService.marcarAvisoProgramadaEnviado(carrera.id);
+    }
+
+    const limiteEjecucion = new Date(Date.now() + botConfig.avisoEjecucionMinutosAntes * 60000);
+    const asignadas = await carrerasService.getAsignadasProximasAEjecutar(limiteEjecucion);
+    for (const carrera of asignadas) {
+      await this.notificarRecordatorioEjecucionConductor(carrera.id);
+      await carrerasService.marcarAvisoEjecucionEnviado(carrera.id);
     }
   }
 }

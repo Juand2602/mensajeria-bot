@@ -1,6 +1,11 @@
 # Serveloz — Progreso de la Etapa 1
 
-Última actualización: 2026-07-25
+Última actualización: 2026-07-26
+
+**Estado actual: en producción en Railway.** Todos los pendientes de puesta en
+producción listados en este documento (credenciales reales, plantilla de Meta,
+prueba de punta a punta por WhatsApp real, Cloudinary, despliegue) ya fueron
+completados por el dueño.
 
 ## Qué se hizo en esta sesión
 
@@ -96,16 +101,16 @@ completa), `src/services/whatsapp/messages.service.ts`,
 
 ## Qué falta por hacer
 
-**Antes de poner en producción (ver `README.md`, sección de checklist):**
-1. Configurar credenciales reales: `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID`,
-   `RADAR_API_KEY` (el usuario ya tiene número en la API de Meta y cuenta de ngrok).
-2. Crear y esperar aprobación de Meta para la plantilla `nueva_carrera_conductor`
+**Antes de poner en producción (ver `README.md`, sección de checklist) — ✅ completado, en producción en Railway:**
+1. ~~Configurar credenciales reales: `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID`,
+   `RADAR_API_KEY`~~ (el usuario ya tiene número en la API de Meta y cuenta de ngrok).
+2. ~~Crear y esperar aprobación de Meta para la plantilla `nueva_carrera_conductor`~~
    (necesaria para notificar al conductor asignado).
-3. Probar el flujo completo de punta a punta desde un teléfono real: registro, pedido
+3. ~~Probar el flujo completo de punta a punta desde un teléfono real: registro, pedido
    inmediato, notificación al dueño, asignación desde el panel, cierre + referido,
    pago, carrera programada, cancelación, ubicación nativa, chat manual, carrera
-   manual.
-4. Configurar variables de entorno reales en Railway y desplegar.
+   manual.~~
+4. ~~Configurar variables de entorno reales en Railway y desplegar.~~
 
 **Limpieza pendiente (opcional, bajo riesgo):**
 - Eliminar el worktree `.claude/worktrees/serveloz-etapa1` y la rama
@@ -241,15 +246,9 @@ evidencia de cada carrera como enlaces etiquetados (cliente / recogida / entrega
 **Verificación (Task 5):** `npx tsc --noEmit` corre limpio, sin salida.
 
 **Qué queda pendiente:**
-- **Cuenta de Cloudinary sin configurar todavía.** Se confirmó (`grep -c CLOUDINARY
-  .env` → 0 coincidencias) que `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` y
-  `CLOUDINARY_API_SECRET` no están en el `.env` del usuario, solo en `.env.example`
-  como plantilla. Esto significa que la subida real a Cloudinary (tanto del flujo del
-  cliente como del conductor) nunca se ha ejercitado de punta a punta con credenciales
-  reales — es un pendiente esperado, no un problema de esta tarea. Antes de usar esta
-  función en producción, el dueño debe crear una cuenta de Cloudinary, configurar esas
-  tres variables en `.env`/Railway, y probar con una foto real de WhatsApp desde un
-  teléfono de cliente y desde un teléfono de conductor.
+- ~~Cuenta de Cloudinary sin configurar todavía.~~ **Resuelto:** cuenta de Cloudinary
+  creada, `CLOUDINARY_CLOUD_NAME`/`CLOUDINARY_API_KEY`/`CLOUDINARY_API_SECRET`
+  configuradas en producción (Railway), en uso con fotos reales de WhatsApp.
 
 ## Actualización 2026-07-25: ficha de vehículo y foto del conductor
 
@@ -307,11 +306,9 @@ dueño prueba los cambios de UI por su cuenta. En su lugar se verificó:
   3000 respondió `200 OK` tanto en `/` como en `/admin/conductores.html`.
 
 **Qué queda pendiente:**
-- Verificación real de punta a punta a través del panel admin (crear un conductor,
-  subir una foto real desde el input de archivo, asignarlo a una carrera) — no
-  verificable en este entorno, queda para el dueño.
-- Verificación real de entrega por WhatsApp del mensaje de imagen con caption a un
-  teléfono real — misma razón, queda para el dueño.
+- ~~Verificación real de punta a punta a través del panel admin~~ y ~~verificación real
+  de entrega por WhatsApp del mensaje de imagen con caption~~ — **resuelto:** el dueño
+  probó ambos flujos en producción.
 - Dos hallazgos **menores** de la revisión de código, sin corregir, para una pasada
   futura:
   - `update()` en `conductores.service.ts` dejaría en blanco un campo de vehículo si

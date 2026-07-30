@@ -3,6 +3,7 @@ import { configuracionService } from './configuracion.service';
 import { generarRadicado } from './whatsapp/templates';
 import { municipioMasCercano } from './municipios';
 import { tarifaMunicipioService } from './tarifa-municipio.service';
+import { botConfig } from '../config/whatsapp';
 
 export interface CrearCarreraInput {
   clienteId: string;
@@ -17,6 +18,7 @@ export interface CrearCarreraInput {
   fechaHoraProgramada?: Date | null;
   origen?: 'WHATSAPP' | 'PANEL';
   conductorId?: string;
+  notas?: string;
 }
 
 export class CarrerasService {
@@ -65,9 +67,20 @@ export class CarrerasService {
         fechaHoraProgramada: data.fechaHoraProgramada || null,
         descuentoAplicado,
         origen: data.origen || 'WHATSAPP',
+        notas: data.notas || null,
       },
       include: { cliente: true, conductor: true },
     });
+
+    // Mismo criterio que asignarConductor: si la carrera manual ya nace
+    // ASIGNADA y programada a menos del margen mínimo, no agendar el
+    // recordatorio de ejecución.
+    if (carrera.conductorId && carrera.fechaHoraProgramada) {
+      const margenMs = carrera.fechaHoraProgramada.getTime() - Date.now();
+      if (margenMs < botConfig.avisoEjecucionMinutosAntes * 60000) {
+        await this.marcarAvisoEjecucionEnviado(carrera.id);
+      }
+    }
 
     return carrera;
   }
@@ -111,7 +124,15 @@ export class CarrerasService {
     if (resultado.count === 0) {
       throw new Error('Carrera no encontrada o ya no está pendiente de asignación');
     }
-    return this.getById(id);
+
+    const carrera = await this.getById(id);
+    if (carrera.fechaHoraProgramada) {
+      const margenMs = carrera.fechaHoraProgramada.getTime() - Date.now();
+      if (margenMs < botConfig.avisoEjecucionMinutosAntes * 60000) {
+        await this.marcarAvisoEjecucionEnviado(id);
+      }
+    }
+    return carrera;
   }
 
   async cambiarEstado(id: string, estado: string, motivoCancelacion?: string) {
@@ -182,6 +203,22 @@ export class CarrerasService {
 
   async marcarAvisoProgramadaEnviado(id: string) {
     return prisma.carrera.update({ where: { id }, data: { avisoProgramadaEnviado: true } });
+  }
+
+  async getAsignadasProximasAEjecutar(antesDe: Date) {
+    return prisma.carrera.findMany({
+      where: {
+        estado: 'ASIGNADA',
+        fechaHoraProgramada: { lte: antesDe },
+        avisoEjecucionEnviado: false,
+        NOT: { fechaHoraProgramada: null },
+      },
+      include: { cliente: true, conductor: true },
+    });
+  }
+
+  async marcarAvisoEjecucionEnviado(id: string) {
+    return prisma.carrera.update({ where: { id }, data: { avisoEjecucionEnviado: true } });
   }
 }
 

@@ -48,7 +48,13 @@ export class MediaService {
     if (!cloudinaryConfig.cloudName || !cloudinaryConfig.apiKey || !cloudinaryConfig.apiSecret) {
       throw new Error('Cloudinary no está configurado (faltan CLOUDINARY_CLOUD_NAME/CLOUDINARY_API_KEY/CLOUDINARY_API_SECRET)');
     }
-    const resultado = await cloudinary.uploader.upload(base64, { folder });
+    // limit: reduce solo si excede 800x800 (sin recortar ni deformar), quality
+    // auto para bajar peso — evita fotos de cámara a resolución completa (varios
+    // MB) llegando tal cual al mensaje de WhatsApp de asignación de conductor.
+    const resultado = await cloudinary.uploader.upload(base64, {
+      folder,
+      transformation: [{ width: 800, height: 800, crop: 'limit', quality: 'auto' }],
+    });
     return resultado.secure_url;
   }
 }

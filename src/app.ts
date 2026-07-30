@@ -51,7 +51,9 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   res.status(err.status || 500).json({ error: err.message || 'Error interno del servidor' });
 });
 
-cron.schedule('*/5 * * * *', async () => {
+// Cada minuto (no cada 5) para que el aviso de inactividad tenga la
+// granularidad suficiente (avisoInactividadAntesMinutos por defecto es 2 min).
+cron.schedule('* * * * *', async () => {
   await limpiarConversacionesInactivas();
 });
 

@@ -282,7 +282,13 @@ router.post('/conversaciones/:telefono/mensajes', verificarAdmin, async (req, re
 
     const conversacion = await prisma.conversacion.findFirst({ where: { telefono, activa: true } });
     if (conversacion) {
-      await prisma.conversacion.update({ where: { id: conversacion.id }, data: { modoManual: true } });
+      // Refrescar lastActivity aquí es lo que evita que timeoutModoManualMinutos
+      // cuente como "inactivo" mientras el admin sigue conversando activamente
+      // con el cliente desde el panel.
+      await prisma.conversacion.update({
+        where: { id: conversacion.id },
+        data: { modoManual: true, lastActivity: new Date(), avisoInactividadEnviado: false },
+      });
     }
 
     res.status(201).json({ message: 'Mensaje enviado' });

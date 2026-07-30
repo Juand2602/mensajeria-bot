@@ -83,6 +83,7 @@ model Carrera {
 
   fechaHoraProgramada DateTime?
   avisoProgramadaEnviado Boolean @default(false)
+  avisoEjecucionEnviado  Boolean @default(false)
 
   descuentoAplicado Boolean @default(false)
   origen            String  @default("WHATSAPP") // WHATSAPP | PANEL
@@ -125,6 +126,7 @@ model Conversacion {
   lastActivity DateTime @default(now())
   activa       Boolean  @default(true)
   modoManual   Boolean  @default(false)
+  avisoInactividadEnviado Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

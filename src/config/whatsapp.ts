@@ -31,6 +31,25 @@ export const mapboxConfig = {
 export const botConfig = {
   timeoutConversacion: parseInt(process.env.TIMEOUT_CONVERSACION || '300000'),
   avisoProgramadaMinutosAntes: parseInt(process.env.AVISO_PROGRAMADA_MINUTOS_ANTES || '30'),
+  // También sirve como margen mínimo: si al asignar el conductor ya faltan
+  // menos de estos minutos para la hora programada, no se agenda el
+  // recordatorio de ejecución — la propia notificación de asignación ya
+  // cumple ese rol. Tienen que ser el mismo valor: si el margen fuera menor al
+  // umbral del recordatorio, cualquier asignación dentro de esa ventana igual
+  // dispararía el recordatorio casi de inmediato después de la asignación.
+  avisoEjecucionMinutosAntes: parseInt(process.env.AVISO_EJECUCION_MINUTOS_ANTES || '30'),
+  // Timeout independiente (más largo) para conversaciones en modoManual — un
+  // cliente esperando respuesta de un asesor no debería perderse a los 5 min
+  // del timeoutConversacion normal. Al vencer, el bot se reanuda solo (cubre
+  // tanto al asesor que nunca respondió como al admin que olvidó pulsar
+  // "Reanudar bot").
+  timeoutModoManualMinutos: parseInt(process.env.TIMEOUT_MODO_MANUAL_MINUTOS || '30'),
+  // Minutos antes de cada timeout en los que se manda un único aviso de
+  // inactividad al cliente (en vez de dejar que la conversación expire en
+  // silencio). Distintos porque timeoutConversacion son minutos y
+  // timeoutModoManualMinutos ya está en minutos.
+  avisoInactividadAntesMinutos: parseInt(process.env.AVISO_INACTIVIDAD_ANTES_MINUTOS || '2'),
+  avisoInactividadModoManualAntesMinutos: parseInt(process.env.AVISO_INACTIVIDAD_MODO_MANUAL_ANTES_MINUTOS || '5'),
 };
 
 export const cloudinaryConfig = {
