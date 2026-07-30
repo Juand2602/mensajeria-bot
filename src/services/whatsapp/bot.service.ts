@@ -719,10 +719,22 @@ export async function limpiarConversacionesInactivas() {
     await prisma.conversacion.update({ where: { id: c.id }, data: { avisoInactividadEnviado: true } });
   }
 
+  // Expiración dura de conversaciones normales: a diferencia de modoManual
+  // (que se reanuda en silencio para no interrumpir al asesor), aquí sí se
+  // avisa — ya se le preguntó "¿sigues ahí?" y no respondió, así que se cierra
+  // la conversación como si se hubiera despedido.
   const limiteNormal = new Date(ahora - botConfig.timeoutConversacion);
-  const normalesExpiradas = await prisma.conversacion.updateMany({
+  const normalesAExpirar = await prisma.conversacion.findMany({
     where: { activa: true, modoManual: false, lastActivity: { lt: limiteNormal } },
-    data: { activa: false },
+  });
+  for (const c of normalesAExpirar) {
+    try {
+      await mensajeriaService.enviarMensaje(c.telefono, MENSAJES.DESPEDIDA());
+    } catch (e) { console.error('Error enviando despedida por inactividad:', e); }
+  }
+  const normalesExpiradas = await prisma.conversacion.updateMany({
+    where: { id: { in: normalesAExpirar.map(c => c.id) } },
+    data: { activa: false, estado: 'COMPLETADA' },
   });
 
   // Expiración dura de modoManual: reanuda el bot solo, sin importar si fue
