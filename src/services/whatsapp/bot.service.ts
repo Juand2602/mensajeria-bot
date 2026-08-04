@@ -501,14 +501,26 @@ export class WhatsAppBotService {
       if (conDescuento) precio = Math.round((precio * 0.8) / 100) * 100;
       contexto.precio = precio;
 
-      await mensajeriaService.enviarMensajeConBotones(
-        telefono,
-        MENSAJES.PRECIO_CALCULADO({ distanciaKm, precio, conDescuento }),
-        [
-          { id: 'precio_si', title: '✅ Confirmar' },
-          { id: 'precio_no', title: '❌ Cancelar' },
-        ]
-      );
+      if (contexto.soloCotizacion) {
+        await mensajeriaService.enviarMensajeConBotones(
+          telefono,
+          MENSAJES.COTIZACION_CALCULADA({ distanciaKm, precio, conDescuento }),
+          [
+            { id: 'cotizacion_pedir', title: '✅ Pedir servicio' },
+            { id: 'cotizacion_otra', title: '🔄 Cotizar otra' },
+            { id: 'btn_salir', title: '🚪 Salir al menú' },
+          ]
+        );
+      } else {
+        await mensajeriaService.enviarMensajeConBotones(
+          telefono,
+          MENSAJES.PRECIO_CALCULADO({ distanciaKm, precio, conDescuento }),
+          [
+            { id: 'precio_si', title: '✅ Confirmar' },
+            { id: 'precio_no', title: '❌ Cancelar' },
+          ]
+        );
+      }
       await this.actualizarConversacion(conversacionId, 'CONFIRMACION_PRECIO', contexto);
     } catch (error) {
       console.error('Error calculando precio:', error);
@@ -517,6 +529,32 @@ export class WhatsAppBotService {
   }
 
   private async manejarConfirmacionPrecio(telefono: string, mensaje: string, contexto: ConversationContext, conversacionId: string) {
+    if (contexto.soloCotizacion) {
+      if (mensaje === 'cotizacion_pedir') {
+        contexto.soloCotizacion = false;
+        if (contexto.esMandado) {
+          await this.continuarTrasConfirmacionPrecio(telefono, contexto, conversacionId);
+        } else {
+          await this.enviarSolicitudNotaAdicional(telefono, contexto, conversacionId, 'crear');
+        }
+        return;
+      }
+      if (mensaje === 'cotizacion_otra') {
+        delete contexto.recogida;
+        delete contexto.destino;
+        delete contexto.distanciaKm;
+        delete contexto.precio;
+        delete contexto.intentosRecogida;
+        delete contexto.intentosDestino;
+        const mensajeRecogida = contexto.esMandado ? MENSAJES.SOLICITAR_ZONA_MANDADO() : MENSAJES.SOLICITAR_RECOGIDA();
+        await mensajeriaService.enviarMensaje(telefono, mensajeRecogida);
+        await this.actualizarConversacion(conversacionId, 'ESPERANDO_RECOGIDA', contexto);
+        return;
+      }
+      await mensajeriaService.enviarMensaje(telefono, MENSAJES.OPCION_INVALIDA());
+      return;
+    }
+
     if (mensaje === 'precio_no' || messageParser.esNegativo(mensaje)) {
       await mensajeriaService.enviarMensaje(telefono, MENSAJES.DESPEDIDA());
       await this.finalizarConversacion(conversacionId);
