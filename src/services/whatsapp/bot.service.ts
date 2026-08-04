@@ -226,6 +226,8 @@ export class WhatsAppBotService {
         await this.manejarDireccion(telefono, mensaje, contexto, conversacionId, 'destino', ubicacion); break;
       case 'ESPERANDO_CONFIRMACION_DESTINO':
         await this.manejarConfirmacionDireccion(telefono, mensaje, contexto, conversacionId, 'destino'); break;
+      case 'ESPERANDO_NOTA_ADICIONAL':
+        await this.manejarNotaAdicional(telefono, mensaje, contexto, conversacionId); break;
       case 'ESPERANDO_MOMENTO':
         await this.manejarMomento(telefono, mensaje, contexto, conversacionId); break;
       case 'ESPERANDO_FECHA_HORA_PROGRAMADA':
@@ -422,12 +424,44 @@ export class WhatsAppBotService {
     if (campo === 'recogida') {
       await mensajeriaService.enviarMensaje(telefono, MENSAJES.SOLICITAR_DESTINO());
       await this.actualizarConversacion(conversacionId, 'ESPERANDO_DESTINO', contexto);
+    } else if (!contexto.esMandado && !contexto.soloCotizacion) {
+      await this.enviarSolicitudNotaAdicional(telefono, contexto, conversacionId, 'momento');
     } else {
-      await mensajeriaService.enviarMensajeConBotones(telefono, MENSAJES.SOLICITAR_MOMENTO(), [
-        { id: 'momento_ahora', title: '🕐 Ahora' },
-        { id: 'momento_programado', title: '📅 Programado' },
-      ]);
-      await this.actualizarConversacion(conversacionId, 'ESPERANDO_MOMENTO', contexto);
+      await this.enviarSolicitudMomento(telefono, contexto, conversacionId);
+    }
+  }
+
+  private async enviarSolicitudMomento(telefono: string, contexto: ConversationContext, conversacionId: string) {
+    await mensajeriaService.enviarMensajeConBotones(telefono, MENSAJES.SOLICITAR_MOMENTO(), [
+      { id: 'momento_ahora', title: '🕐 Ahora' },
+      { id: 'momento_programado', title: '📅 Programado' },
+    ]);
+    await this.actualizarConversacion(conversacionId, 'ESPERANDO_MOMENTO', contexto);
+  }
+
+  private async enviarSolicitudNotaAdicional(
+    telefono: string,
+    contexto: ConversationContext,
+    conversacionId: string,
+    siguiente: 'momento' | 'crear'
+  ) {
+    contexto.notaAdicionalSiguiente = siguiente;
+    await mensajeriaService.enviarMensajeConBotones(telefono, MENSAJES.SOLICITAR_NOTA_ADICIONAL(), [
+      { id: 'nota_omitir', title: 'Omitir' },
+    ]);
+    await this.actualizarConversacion(conversacionId, 'ESPERANDO_NOTA_ADICIONAL', contexto);
+  }
+
+  private async manejarNotaAdicional(telefono: string, mensaje: string, contexto: ConversationContext, conversacionId: string) {
+    if (mensaje !== 'nota_omitir') {
+      contexto.notas = mensaje.trim();
+    }
+    const siguiente = contexto.notaAdicionalSiguiente;
+    delete contexto.notaAdicionalSiguiente;
+    if (siguiente === 'crear') {
+      await this.continuarTrasConfirmacionPrecio(telefono, contexto, conversacionId);
+    } else {
+      await this.enviarSolicitudMomento(telefono, contexto, conversacionId);
     }
   }
 
