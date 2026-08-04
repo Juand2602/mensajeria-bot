@@ -49,6 +49,7 @@ export type ConversationState =
   | 'ESPERANDO_SELECCION_CARRERA_CANCELAR'
   | 'ESPERANDO_CONFIRMACION_CANCELACION'
   | 'ESPERANDO_CONFIRMACION_AYUDA'
+  | 'ESPERANDO_NOTA_ADICIONAL'
   | 'COMPLETADA';
 
 export interface UbicacionCompartida {
@@ -79,6 +80,8 @@ export interface ConversationContext {
   tipoServicio?: 'DOMICILIO' | 'MOTOTAXI';
   esMandado?: boolean;
   notas?: string;
+  soloCotizacion?: boolean;
+  notaAdicionalSiguiente?: 'momento' | 'crear';
   recogida?: DireccionPendiente;
   destino?: DireccionPendiente;
   intentosRecogida?: number;

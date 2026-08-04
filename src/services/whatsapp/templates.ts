@@ -53,6 +53,8 @@ export const MENSAJES = {
   FECHA_PROGRAMADA_INVALIDA: () => 'No entendí la fecha/hora. Intenta de nuevo, por ejemplo: *"mañana 3:00pm"*.',
   PRECIO_CALCULADO: (info: { distanciaKm: number; precio: number; conDescuento: boolean }) =>
     `💰 *Resumen de tu carrera*\n\n📏 Distancia: ${info.distanciaKm.toFixed(1)} km\n💵 Precio: $${info.precio.toLocaleString('es-CO')}${info.conDescuento ? ' (con tu 20% de descuento por referido aplicado)' : ''}\n\n¿Confirmas el pedido?`,
+  COTIZACION_CALCULADA: (info: { distanciaKm: number; precio: number; conDescuento: boolean }) =>
+    `💰 *Cotización*\n\n📏 Distancia: ${info.distanciaKm.toFixed(1)} km\n💵 Precio: $${info.precio.toLocaleString('es-CO')}${info.conDescuento ? ' (con tu 20% de descuento por referido aplicado)' : ''}\n\n¿Qué deseas hacer?`,
   CARRERA_CONFIRMADA: (info: { radicado: string }) =>
     `✅ *¡Pedido confirmado!*\n\n📋 Radicado: ${info.radicado}\n\nEstamos buscando el conductor disponible. Te avisamos en cuanto se asigne.\n\n${MENSAJES.METODOS_PAGO()}`,
   METODOS_PAGO: () =>
@@ -97,5 +99,7 @@ export const MENSAJES = {
   SOLICITAR_ENCARGO_MANDADO: () => '🧾 Cuéntanos qué necesitas que compremos o hagamos (ej: "Comprar una caja de ganchos en cualquier papelería o Recoger un paquete").',
   SOLICITAR_ZONA_MANDADO: () =>
     '📍 Ahora dinos en qué dirección, barrio o punto de referencia prefieres que hagamos la compra/mandado (ej: "Papeleria centro" o "Calle 48 # 33-11") o comparte tu ubicación 📎.',
+  SOLICITAR_NOTA_ADICIONAL: () =>
+    '📝 Si tu dirección es un conjunto/apartamento, o el punto exacto no aparece en el mapa, cuéntanos aquí (torre, apto, interior, o una referencia como "al lado de la tienda"). Si no necesitas aclarar nada, toca *Omitir*.',
   DESPEDIDA: () => '¡Gracias por escribir a Serveloz! Cuando necesites un domicilio o mototaxi, aquí estamos. 🛵',
 };
