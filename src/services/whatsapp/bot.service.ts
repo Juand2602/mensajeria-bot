@@ -492,7 +492,10 @@ export class WhatsAppBotService {
       await mensajeriaService.enviarMensaje(telefono, MENSAJES.OPCION_INVALIDA());
       return;
     }
+    await this.continuarTrasConfirmacionPrecio(telefono, contexto, conversacionId);
+  }
 
+  private async continuarTrasConfirmacionPrecio(telefono: string, contexto: ConversationContext, conversacionId: string): Promise<void> {
     if (contexto.tipoServicio === 'DOMICILIO') {
       await mensajeriaService.enviarMensajeConBotones(telefono, MENSAJES.SOLICITAR_EVIDENCIA_CLIENTE(), [
         { id: 'evidencia_continuar', title: 'Continuar sin foto' },
