@@ -26,11 +26,12 @@ export class NotificacionesService {
         `$${carrera.precio.toLocaleString('es-CO')}`,
         carrera.fechaHoraProgramada ? carrera.fechaHoraProgramada.toLocaleString('es-CO') : 'Para ahora mismo',
       ]);
-      // La plantilla no tiene un parámetro para el encargo (solo aplica al
-      // subtipo "mandado/compra" de domicilio) — se manda como texto libre
-      // aparte, dentro de la ventana de 24h que la propia plantilla abre.
+      // La plantilla no tiene un parámetro para esta nota (viene del encargo de
+      // un mandado, o de la aclaración opcional de dirección/apto) — se manda
+      // como texto libre aparte, dentro de la ventana de 24h que la propia
+      // plantilla abre.
       if (carrera.notas) {
-        await mensajeriaService.enviarMensaje(telefonoAdmin, `📝 Encargo: ${carrera.notas}`);
+        await mensajeriaService.enviarMensaje(telefonoAdmin, `📝 Nota: ${carrera.notas}`);
       }
     } catch (e) { console.error('Error notificando nueva solicitud al dueño:', e); }
   }
@@ -68,7 +69,7 @@ export class NotificacionesService {
           ];
       await whatsappMessagesService.enviarPlantilla(carrera.conductor.telefono, plantilla, 'es', params);
       if (carrera.notas) {
-        await mensajeriaService.enviarMensaje(carrera.conductor.telefono, `📝 Encargo: ${carrera.notas}`);
+        await mensajeriaService.enviarMensaje(carrera.conductor.telefono, `📝 Nota: ${carrera.notas}`);
       }
     } catch (e) { console.error('Error notificando al conductor:', e); }
 

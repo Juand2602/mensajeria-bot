@@ -102,7 +102,7 @@ export class WhatsAppBotService {
       const estado = conversacion.estado as ConversationState;
       const contexto: ConversationContext = JSON.parse(conversacion.contexto);
       const mensajeAProcesar = esBoton && buttonId ? buttonId : mensaje;
-      await this.procesarEstado(telefono, mensajeAProcesar, estado, contexto, conversacion.id, ubicacion, imagen);
+      await this.procesarEstado(telefono, mensajeAProcesar, estado, contexto, conversacion.id, esBoton, ubicacion, imagen);
     } catch (error) {
       console.error('Error procesando mensaje:', error);
       await mensajeriaService.enviarMensaje(telefono, MENSAJES.ERROR_SERVIDOR());
@@ -154,6 +154,9 @@ export class WhatsAppBotService {
 
   private async manejarMenuPrincipal(telefono: string, mensaje: string, contexto: ConversationContext, conversacionId: string) {
     if (mensaje === 'menu_pedir') {
+      // Se limpia explícitamente por si quedó en true de una cotización previa
+      // abandonada en la misma conversación (simétrico con menu_cotizar).
+      contexto.soloCotizacion = false;
       await this.enviarMenuTipoServicio(telefono);
       await this.actualizarConversacion(conversacionId, 'ESPERANDO_TIPO_SERVICIO', contexto);
     } else if (mensaje === 'menu_cotizar') {
@@ -204,6 +207,7 @@ export class WhatsAppBotService {
     estado: ConversationState,
     contexto: ConversationContext,
     conversacionId: string,
+    esBoton: boolean,
     ubicacion?: UbicacionCompartida,
     imagen?: ImagenRecibida
   ) {
@@ -227,7 +231,7 @@ export class WhatsAppBotService {
       case 'ESPERANDO_CONFIRMACION_DESTINO':
         await this.manejarConfirmacionDireccion(telefono, mensaje, contexto, conversacionId, 'destino'); break;
       case 'ESPERANDO_NOTA_ADICIONAL':
-        await this.manejarNotaAdicional(telefono, mensaje, contexto, conversacionId); break;
+        await this.manejarNotaAdicional(telefono, mensaje, contexto, conversacionId, esBoton, ubicacion, imagen); break;
       case 'ESPERANDO_MOMENTO':
         await this.manejarMomento(telefono, mensaje, contexto, conversacionId); break;
       case 'ESPERANDO_FECHA_HORA_PROGRAMADA':
@@ -302,8 +306,8 @@ export class WhatsAppBotService {
       await this.actualizarConversacion(conversacionId, 'ESPERANDO_ENCARGO_MANDADO', contexto);
       return;
     }
-    if (mensaje === 'tipo_domicilio') contexto.tipoServicio = 'DOMICILIO';
-    else if (mensaje === 'tipo_mototaxi') contexto.tipoServicio = 'MOTOTAXI';
+    if (mensaje === 'tipo_domicilio') { contexto.tipoServicio = 'DOMICILIO'; contexto.esMandado = false; }
+    else if (mensaje === 'tipo_mototaxi') { contexto.tipoServicio = 'MOTOTAXI'; contexto.esMandado = false; }
     else {
       await mensajeriaService.enviarMensaje(telefono, MENSAJES.OPCION_INVALIDA());
       await this.enviarMenuTipoServicio(telefono);
@@ -452,8 +456,21 @@ export class WhatsAppBotService {
     await this.actualizarConversacion(conversacionId, 'ESPERANDO_NOTA_ADICIONAL', contexto);
   }
 
-  private async manejarNotaAdicional(telefono: string, mensaje: string, contexto: ConversationContext, conversacionId: string) {
-    if (mensaje !== 'nota_omitir') {
+  private async manejarNotaAdicional(
+    telefono: string,
+    mensaje: string,
+    contexto: ConversationContext,
+    conversacionId: string,
+    esBoton: boolean,
+    ubicacion?: UbicacionCompartida,
+    imagen?: ImagenRecibida
+  ) {
+    // Solo se guarda la nota si el cliente realmente escribió texto libre: un
+    // botón (el de "Omitir", o uno viejo que quedó tocable de un mensaje
+    // anterior) o una ubicación/foto compartida llegan aquí como el id del
+    // botón o como el centinela 'UBICACION_COMPARTIDA'/'IMAGEN_RECIBIDA', que
+    // no son una nota válida para el dueño ni el conductor.
+    if (!esBoton && !ubicacion && !imagen) {
       contexto.notas = mensaje.trim();
     }
     const siguiente = contexto.notaAdicionalSiguiente;

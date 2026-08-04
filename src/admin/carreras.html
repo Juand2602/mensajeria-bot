@@ -176,7 +176,7 @@
         ['Estado de pago', c.estado === 'CANCELADA' ? 'No aplica' : esc(c.estadoPago)],
       ];
 
-      if (c.notas) filas.push(['Encargo', esc(c.notas)]);
+      if (c.notas) filas.push(['Nota', esc(c.notas)]);
 
       if (c.conductor) {
         const vehiculo = [c.conductor.tipoVehiculo, c.conductor.marca, c.conductor.linea, c.conductor.modelo]
