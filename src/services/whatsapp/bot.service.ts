@@ -148,11 +148,16 @@ export class WhatsAppBotService {
     ]);
     await mensajeriaService.enviarMensajeConBotones(telefono, 'También puedes:', [
       { id: 'menu_ayuda', title: '🙋 Hablar con asesor' },
+      { id: 'menu_cotizar', title: '💰 Cotizar' },
     ]);
   }
 
   private async manejarMenuPrincipal(telefono: string, mensaje: string, contexto: ConversationContext, conversacionId: string) {
     if (mensaje === 'menu_pedir') {
+      await this.enviarMenuTipoServicio(telefono);
+      await this.actualizarConversacion(conversacionId, 'ESPERANDO_TIPO_SERVICIO', contexto);
+    } else if (mensaje === 'menu_cotizar') {
+      contexto.soloCotizacion = true;
       await this.enviarMenuTipoServicio(telefono);
       await this.actualizarConversacion(conversacionId, 'ESPERANDO_TIPO_SERVICIO', contexto);
     } else if (mensaje === 'menu_referidos') {
