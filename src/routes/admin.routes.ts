@@ -9,6 +9,7 @@ import { mapboxService } from '../services/mapbox.service';
 import { notificacionesService } from '../services/notificaciones.service';
 import { whatsappMessagesService } from '../services/whatsapp/messages.service';
 import { mensajeriaService } from '../services/mensajeria.service';
+import { finalizarConversacionPorTelefono } from '../services/whatsapp/bot.service';
 import prisma from '../config/database';
 
 const router = Router();
@@ -118,6 +119,7 @@ router.put('/carreras/:id/completar', verificarAdmin, async (req, res) => {
   try {
     const { carrera, referidorNotificar } = await carrerasService.marcarCompletada(req.params.id);
     try { await notificacionesService.notificarCierre(carrera.id, referidorNotificar?.telefono); } catch (e) { console.error('Error notificando cierre:', e); }
+    try { await finalizarConversacionPorTelefono(carrera.cliente.telefono); } catch (e) { console.error('Error cerrando conversación:', e); }
     res.json(carrera);
   } catch (e: any) { res.status(400).json({ error: e.message }); }
 });
@@ -140,6 +142,9 @@ router.put('/carreras/:id/estado', verificarAdmin, async (req, res) => {
       return;
     }
     const carrera = await carrerasService.cambiarEstado(req.params.id, req.body.estado, req.body.motivoCancelacion);
+    if (carrera.estado === 'COMPLETADA' || carrera.estado === 'CANCELADA') {
+      try { await finalizarConversacionPorTelefono(carrera.cliente.telefono); } catch (e) { console.error('Error cerrando conversación:', e); }
+    }
     res.json(carrera);
   } catch (e: any) { res.status(400).json({ error: e.message }); }
 });

@@ -880,9 +880,19 @@ export async function limpiarConversacionesInactivas() {
   // quedarse a mitad de un flujo (ej. dando direcciones ambiguas) y
   // desaparecer sin que nadie en Serveloz se enterara de que se perdió un
   // pedido.
+  // ESPERANDO_ASIGNACION queda fuera: ahí el cliente ya confirmó su pedido y
+  // está esperando a que el dueño le asigne un conductor desde el panel — no
+  // hay nada que el cliente deba responder, así que avisarle "¿sigues ahí?" o
+  // despedirlo por inactividad no tiene sentido en ese punto.
   const umbralAvisoNormal = new Date(ahora - (botConfig.timeoutConversacion - botConfig.avisoInactividadAntesMinutos * 60000));
   const paraAvisarNormal = await prisma.conversacion.findMany({
-    where: { activa: true, modoManual: false, avisoInactividadEnviado: false, lastActivity: { lt: umbralAvisoNormal } },
+    where: {
+      activa: true,
+      modoManual: false,
+      estado: { not: 'ESPERANDO_ASIGNACION' },
+      avisoInactividadEnviado: false,
+      lastActivity: { lt: umbralAvisoNormal },
+    },
   });
   for (const c of paraAvisarNormal) {
     try {
@@ -915,9 +925,12 @@ export async function limpiarConversacionesInactivas() {
   // (que se reanuda en silencio para no interrumpir al asesor), aquí sí se
   // avisa — ya se le preguntó "¿sigues ahí?" y no respondió, así que se cierra
   // la conversación como si se hubiera despedido.
+  // Misma exclusión que el aviso de arriba: una conversación esperando
+  // asignación se cierra cuando el dueño completa o cancela la carrera desde
+  // el panel (ver finalizarConversacionPorTelefono), no por inactividad.
   const limiteNormal = new Date(ahora - botConfig.timeoutConversacion);
   const normalesAExpirar = await prisma.conversacion.findMany({
-    where: { activa: true, modoManual: false, lastActivity: { lt: limiteNormal } },
+    where: { activa: true, modoManual: false, estado: { not: 'ESPERANDO_ASIGNACION' }, lastActivity: { lt: limiteNormal } },
   });
   for (const c of normalesAExpirar) {
     try {
@@ -941,4 +954,14 @@ export async function limpiarConversacionesInactivas() {
 
   const total = normalesExpiradas.count + manualExpiradas.count;
   if (total > 0) console.log(`✅ ${total} conversaciones inactivas limpiadas`);
+}
+
+// Usado por el panel admin al completar o cancelar una carrera: la
+// conversación de ese cliente queda en ESPERANDO_ASIGNACION esperando la
+// asignación del conductor, y nada más la cierra una vez la carrera ya tiene
+// un desenlace — sin esto, quedaría activa indefinidamente.
+export async function finalizarConversacionPorTelefono(telefono: string) {
+  const conversacion = await prisma.conversacion.findFirst({ where: { telefono, activa: true } });
+  if (!conversacion) return;
+  await prisma.conversacion.update({ where: { id: conversacion.id }, data: { activa: false, estado: 'COMPLETADA' } });
 }
