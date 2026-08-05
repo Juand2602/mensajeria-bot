@@ -261,7 +261,12 @@ export class WhatsAppBotService {
       case 'ESPERANDO_CONFIRMACION_AYUDA':
         await this.manejarConfirmacionAyuda(telefono, mensaje, contexto, conversacionId); break;
       default:
-        await mensajeriaService.enviarMensaje(telefono, MENSAJES.OPCION_INVALIDA());
+        // Estado desconocido (ej. un nombre de estado que ya no existe, de una
+        // conversación que quedó a mitad de camino justo antes de un deploy) —
+        // se recupera mandando al menú principal en vez de repetir "no entendí"
+        // para siempre, que dejaba la conversación sin salida real.
+        await this.enviarMenuPrincipal(telefono);
+        await this.actualizarConversacion(conversacionId, 'MENU_PRINCIPAL', {});
     }
   }
 
@@ -293,6 +298,18 @@ export class WhatsAppBotService {
   }
 
   private async manejarTipoServicio(telefono: string, mensaje: string, contexto: ConversationContext, conversacionId: string) {
+    // Se limpian los campos del pedido anterior por si el cliente abandonó un
+    // intento previo en la misma conversación (ej. cotizó un domicilio, salió
+    // por "Hablar con asesor", y ahora vuelve a pedir un mototaxi) — sin esto,
+    // una nota o el contacto de entrega de ese intento viejo podían colarse en
+    // el pedido nuevo, incluso de un tipo de servicio distinto.
+    delete contexto.notaRecogida;
+    delete contexto.notaDestino;
+    delete contexto.contactoEntrega;
+    delete contexto.pasosPendientes;
+    delete contexto.pasoActual;
+    delete contexto.pasoPendienteSiguiente;
+
     if (mensaje === 'tipo_mandado') {
       // "Mandado/Compra" es igual a un domicilio para efectos de precio y
       // estado (misma tabla Carrera), solo cambia el flujo de conversación:
@@ -385,10 +402,19 @@ export class WhatsAppBotService {
       lat: resultado.lat,
       lng: resultado.lng,
     };
-    await mensajeriaService.enviarMensajeConBotones(telefono, MENSAJES.CONFIRMAR_DIRECCION(mensaje, resultado.direccionFormateada), [
-      { id: 'direccion_si', title: '✅ Sí' },
-      { id: 'direccion_no', title: '❌ No' },
-    ]);
+    await mensajeriaService.enviarMensajeConBotones(
+      telefono,
+      // El texto del cliente se recorta porque el cuerpo de un mensaje
+      // interactivo de WhatsApp tiene límite de largo. El tercer argumento usa
+      // la misma condición que avanzarDespuesDeDireccion para encolar un paso de
+      // nota: si no va a haber nota después (mandado o cotización), el mensaje
+      // no debe prometerla.
+      MENSAJES.CONFIRMAR_DIRECCION(mensaje.slice(0, 200), resultado.direccionFormateada, !contexto.esMandado && !contexto.soloCotizacion),
+      [
+        { id: 'direccion_si', title: '✅ Sí' },
+        { id: 'direccion_no', title: '❌ No' },
+      ]
+    );
     await this.actualizarConversacion(
       conversacionId,
       campo === 'recogida' ? 'ESPERANDO_CONFIRMACION_RECOGIDA' : 'ESPERANDO_CONFIRMACION_DESTINO',
@@ -433,7 +459,7 @@ export class WhatsAppBotService {
         await this.actualizarConversacion(conversacionId, 'ESPERANDO_DESTINO', contexto);
       }
     } else if (!contexto.esMandado && !contexto.soloCotizacion) {
-      const pasos: PasoPendiente[] = contexto.tipoServicio === 'DOMICILIO' ? ['notaDestino', 'contactoDestino'] : ['notaDestino'];
+      const pasos: PasoPendiente[] = this.esDomicilioReal(contexto) ? ['notaDestino', 'contactoDestino'] : ['notaDestino'];
       await this.encolarPasosPendientes(telefono, contexto, conversacionId, pasos, 'momento');
     } else {
       await this.enviarSolicitudMomento(telefono, contexto, conversacionId);
@@ -582,10 +608,9 @@ export class WhatsAppBotService {
         if (contexto.esMandado) {
           await this.continuarTrasConfirmacionPrecio(telefono, contexto, conversacionId);
         } else {
-          const pasos: PasoPendiente[] =
-            contexto.tipoServicio === 'DOMICILIO'
-              ? ['notaRecogida', 'notaDestino', 'contactoDestino']
-              : ['notaRecogida', 'notaDestino'];
+          const pasos: PasoPendiente[] = this.esDomicilioReal(contexto)
+            ? ['notaRecogida', 'notaDestino', 'contactoDestino']
+            : ['notaRecogida', 'notaDestino'];
           await this.encolarPasosPendientes(telefono, contexto, conversacionId, pasos, 'crear');
         }
         return;
@@ -656,14 +681,24 @@ export class WhatsAppBotService {
     await mensajeriaService.enviarMensaje(telefono, MENSAJES.OPCION_INVALIDA());
   }
 
+  // "Mandado/Compra" comparte tipoServicio 'DOMICILIO' con el domicilio normal,
+  // así que preguntar solo por tipoServicio no alcanza para saber si es un
+  // domicilio de verdad (el único que pide contacto de quien recibe).
+  private esDomicilioReal(contexto: ConversationContext): boolean {
+    return contexto.tipoServicio === 'DOMICILIO' && !contexto.esMandado;
+  }
+
   // Los mandados ya usan contexto.notas para el encargo (capturado antes de pedir
-  // direcciones) — para el resto de servicios, se arman las notas de recogida y
-  // destino combinadas solo si hay ambas, o sin etiqueta si hay solo una.
+  // direcciones) — para el resto de servicios, se etiquetan siempre las notas de
+  // recogida y destino, incluso si solo hay una: sin etiqueta el conductor no
+  // podía saber a cuál de las dos direcciones se refería la aclaración.
   private construirNotas(contexto: ConversationContext): string | undefined {
     if (contexto.esMandado) return contexto.notas;
     const { notaRecogida, notaDestino } = contexto;
     if (notaRecogida && notaDestino) return `Recogida: ${notaRecogida} | Destino: ${notaDestino}`;
-    return notaRecogida || notaDestino || undefined;
+    if (notaRecogida) return `Recogida: ${notaRecogida}`;
+    if (notaDestino) return `Destino: ${notaDestino}`;
+    return undefined;
   }
 
   private async crearCarreraConfirmada(

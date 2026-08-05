@@ -42,8 +42,8 @@ export const MENSAJES = {
   SOLICITAR_TIPO_SERVICIO: () => '¿Qué servicio necesitas?',
   SOLICITAR_RECOGIDA: () =>
     '📍 Escribe la *dirección de recogida* (ej: "Calle 57 #27-30" o "Megamall") o comparte tu ubicación 📎 — ambas opciones funcionan igual de bien.',
-  CONFIRMAR_DIRECCION: (textoBuscado: string, direccionEncontrada: string) =>
-    `Buscaste: *${textoBuscado}*\n📍 Encontramos: *${direccionEncontrada}*\n\n_(Es la coincidencia más cercana que encontramos. Si el número no es exacto, responde "Sí" de todas formas — en el siguiente paso podrás escribir la aclaración exacta. Si esta dirección no tiene nada que ver con la tuya, responde "No" para intentar de nuevo.)_\n\n¿Es correcta?`,
+  CONFIRMAR_DIRECCION: (textoBuscado: string, direccionEncontrada: string, habraNotaDespues: boolean) =>
+    `Buscaste: *${textoBuscado}*\n📍 Encontramos: *${direccionEncontrada}*\n\n_(Es la coincidencia más cercana que encontramos.${habraNotaDespues ? ' Si el número no es exacto, responde "Sí" de todas formas — en el siguiente paso podrás escribir la aclaración exacta.' : ' Si el número no es exacto pero es la misma zona, responde "Sí" de todas formas.'} Si esta dirección no tiene nada que ver con la tuya, responde "No" para intentar de nuevo.)_\n\n¿Es correcta?`,
   DIRECCION_NO_ENCONTRADA: () => '🛵 No pude encontrar esa dirección. Intenta escribirla de nuevo (ej: "Cra 27 #45-12") o comparte tu ubicación 📍.',
   SOLICITAR_DESTINO: () =>
     '📍 Ahora escribe la *dirección de destino* (ej: "Carrera 33 #45-10" o "Centro Comercial Cacique") o comparte tu ubicación 📎.',
