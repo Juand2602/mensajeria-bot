@@ -42,7 +42,8 @@ export const MENSAJES = {
   SOLICITAR_TIPO_SERVICIO: () => '¿Qué servicio necesitas?',
   SOLICITAR_RECOGIDA: () =>
     '📍 Escribe la *dirección de recogida* (ej: "Calle 57 #27-30" o "Megamall") o comparte tu ubicación 📎 — ambas opciones funcionan igual de bien.',
-  CONFIRMAR_DIRECCION: (direccion: string) => `Encontramos esta dirección:\n\n📍 *${direccion}*\n\n¿Es correcta?`,
+  CONFIRMAR_DIRECCION: (textoBuscado: string, direccionEncontrada: string) =>
+    `Buscaste: *${textoBuscado}*\n📍 Encontramos: *${direccionEncontrada}*\n\n_(Es la coincidencia más cercana que encontramos. Si el número no es exacto, responde "Sí" de todas formas — en el siguiente paso podrás escribir la aclaración exacta. Si esta dirección no tiene nada que ver con la tuya, responde "No" para intentar de nuevo.)_\n\n¿Es correcta?`,
   DIRECCION_NO_ENCONTRADA: () => '🛵 No pude encontrar esa dirección. Intenta escribirla de nuevo (ej: "Cra 27 #45-12") o comparte tu ubicación 📍.',
   SOLICITAR_DESTINO: () =>
     '📍 Ahora escribe la *dirección de destino* (ej: "Carrera 33 #45-10" o "Centro Comercial Cacique") o comparte tu ubicación 📎.',
@@ -99,7 +100,11 @@ export const MENSAJES = {
   SOLICITAR_ENCARGO_MANDADO: () => '🧾 Cuéntanos qué necesitas que compremos o hagamos (ej: "Comprar una caja de ganchos en cualquier papelería o Recoger un paquete").',
   SOLICITAR_ZONA_MANDADO: () =>
     '📍 Ahora dinos en qué dirección, barrio o punto de referencia prefieres que hagamos la compra/mandado (ej: "Papeleria centro" o "Calle 48 # 33-11") o comparte tu ubicación 📎.',
-  SOLICITAR_NOTA_ADICIONAL: () =>
-    '📝 Si tu dirección es un conjunto/apartamento, o el punto exacto no aparece en el mapa, cuéntanos aquí (torre, apto, interior, o una referencia como "al lado de la tienda"). Si no necesitas aclarar nada, toca *Omitir*.',
+  SOLICITAR_NOTA_RECOGIDA: () =>
+    '📝 Si la dirección de *recogida* es un conjunto/apartamento, o el punto exacto no aparece en el mapa, cuéntanos aquí (torre, apto, interior, o una referencia). Si no necesitas aclarar nada, toca *Omitir*.',
+  SOLICITAR_NOTA_DESTINO: () =>
+    '📝 Si la dirección de *destino* es un conjunto/apartamento, o el punto exacto no aparece en el mapa, cuéntanos aquí (torre, apto, interior, o una referencia). Si no necesitas aclarar nada, toca *Omitir*.',
+  SOLICITAR_CONTACTO_ENTREGA: () =>
+    '👤 *¿Quién recibe el domicilio en el destino?* Escribe el nombre y teléfono de esa persona (ej: "Carmen García, 3001234567"). Si eres tú, escribe tu nombre, o toca Omitir.',
   DESPEDIDA: () => '¡Gracias por escribir a Serveloz! Cuando necesites un domicilio o mototaxi, aquí estamos. 🛵',
 };

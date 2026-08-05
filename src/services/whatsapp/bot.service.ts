@@ -6,7 +6,7 @@ import { notificacionesService } from '../notificaciones.service';
 import { mensajeriaService } from '../mensajeria.service';
 import { messageParser } from './parser.service';
 import { MENSAJES, validarNombreCompleto } from './templates';
-import { ConversationState, ConversationContext, UbicacionCompartida, ImagenRecibida } from '../../types';
+import { ConversationState, ConversationContext, UbicacionCompartida, ImagenRecibida, PasoPendiente } from '../../types';
 import { botConfig } from '../../config/whatsapp';
 import { mediaService } from '../media.service';
 import { evidenciaService } from '../evidencia.service';
@@ -230,8 +230,8 @@ export class WhatsAppBotService {
         await this.manejarDireccion(telefono, mensaje, contexto, conversacionId, 'destino', ubicacion); break;
       case 'ESPERANDO_CONFIRMACION_DESTINO':
         await this.manejarConfirmacionDireccion(telefono, mensaje, contexto, conversacionId, 'destino'); break;
-      case 'ESPERANDO_NOTA_ADICIONAL':
-        await this.manejarNotaAdicional(telefono, mensaje, contexto, conversacionId, esBoton, ubicacion, imagen); break;
+      case 'ESPERANDO_PASO_PENDIENTE':
+        await this.manejarPasoPendiente(telefono, mensaje, contexto, conversacionId, esBoton, ubicacion, imagen); break;
       case 'ESPERANDO_MOMENTO':
         await this.manejarMomento(telefono, mensaje, contexto, conversacionId); break;
       case 'ESPERANDO_FECHA_HORA_PROGRAMADA':
@@ -385,7 +385,7 @@ export class WhatsAppBotService {
       lat: resultado.lat,
       lng: resultado.lng,
     };
-    await mensajeriaService.enviarMensajeConBotones(telefono, MENSAJES.CONFIRMAR_DIRECCION(resultado.direccionFormateada), [
+    await mensajeriaService.enviarMensajeConBotones(telefono, MENSAJES.CONFIRMAR_DIRECCION(mensaje, resultado.direccionFormateada), [
       { id: 'direccion_si', title: '✅ Sí' },
       { id: 'direccion_no', title: '❌ No' },
     ]);
@@ -426,10 +426,15 @@ export class WhatsAppBotService {
     campo: 'recogida' | 'destino'
   ) {
     if (campo === 'recogida') {
-      await mensajeriaService.enviarMensaje(telefono, MENSAJES.SOLICITAR_DESTINO());
-      await this.actualizarConversacion(conversacionId, 'ESPERANDO_DESTINO', contexto);
+      if (!contexto.esMandado && !contexto.soloCotizacion) {
+        await this.encolarPasosPendientes(telefono, contexto, conversacionId, ['notaRecogida'], 'destino');
+      } else {
+        await mensajeriaService.enviarMensaje(telefono, MENSAJES.SOLICITAR_DESTINO());
+        await this.actualizarConversacion(conversacionId, 'ESPERANDO_DESTINO', contexto);
+      }
     } else if (!contexto.esMandado && !contexto.soloCotizacion) {
-      await this.enviarSolicitudNotaAdicional(telefono, contexto, conversacionId, 'momento');
+      const pasos: PasoPendiente[] = contexto.tipoServicio === 'DOMICILIO' ? ['notaDestino', 'contactoDestino'] : ['notaDestino'];
+      await this.encolarPasosPendientes(telefono, contexto, conversacionId, pasos, 'momento');
     } else {
       await this.enviarSolicitudMomento(telefono, contexto, conversacionId);
     }
@@ -443,20 +448,47 @@ export class WhatsAppBotService {
     await this.actualizarConversacion(conversacionId, 'ESPERANDO_MOMENTO', contexto);
   }
 
-  private async enviarSolicitudNotaAdicional(
+  private async avanzarPasoPendiente(telefono: string, contexto: ConversationContext, conversacionId: string) {
+    const [paso, ...resto] = contexto.pasosPendientes || [];
+    if (!paso) {
+      const siguiente = contexto.pasoPendienteSiguiente;
+      delete contexto.pasoPendienteSiguiente;
+      if (siguiente === 'destino') {
+        await mensajeriaService.enviarMensaje(telefono, MENSAJES.SOLICITAR_DESTINO());
+        await this.actualizarConversacion(conversacionId, 'ESPERANDO_DESTINO', contexto);
+      } else if (siguiente === 'crear') {
+        await this.continuarTrasConfirmacionPrecio(telefono, contexto, conversacionId);
+      } else {
+        await this.enviarSolicitudMomento(telefono, contexto, conversacionId);
+      }
+      return;
+    }
+    contexto.pasosPendientes = resto;
+    contexto.pasoActual = paso;
+    const mensajePorPaso: Record<PasoPendiente, string> = {
+      notaRecogida: MENSAJES.SOLICITAR_NOTA_RECOGIDA(),
+      notaDestino: MENSAJES.SOLICITAR_NOTA_DESTINO(),
+      contactoDestino: MENSAJES.SOLICITAR_CONTACTO_ENTREGA(),
+    };
+    await mensajeriaService.enviarMensajeConBotones(telefono, mensajePorPaso[paso], [
+      { id: 'paso_omitir', title: 'Omitir' },
+    ]);
+    await this.actualizarConversacion(conversacionId, 'ESPERANDO_PASO_PENDIENTE', contexto);
+  }
+
+  private async encolarPasosPendientes(
     telefono: string,
     contexto: ConversationContext,
     conversacionId: string,
-    siguiente: 'momento' | 'crear'
+    pasos: PasoPendiente[],
+    siguiente: 'destino' | 'momento' | 'crear'
   ) {
-    contexto.notaAdicionalSiguiente = siguiente;
-    await mensajeriaService.enviarMensajeConBotones(telefono, MENSAJES.SOLICITAR_NOTA_ADICIONAL(), [
-      { id: 'nota_omitir', title: 'Omitir' },
-    ]);
-    await this.actualizarConversacion(conversacionId, 'ESPERANDO_NOTA_ADICIONAL', contexto);
+    contexto.pasosPendientes = pasos;
+    contexto.pasoPendienteSiguiente = siguiente;
+    await this.avanzarPasoPendiente(telefono, contexto, conversacionId);
   }
 
-  private async manejarNotaAdicional(
+  private async manejarPasoPendiente(
     telefono: string,
     mensaje: string,
     contexto: ConversationContext,
@@ -465,21 +497,19 @@ export class WhatsAppBotService {
     ubicacion?: UbicacionCompartida,
     imagen?: ImagenRecibida
   ) {
-    // Solo se guarda la nota si el cliente realmente escribió texto libre: un
-    // botón (el de "Omitir", o uno viejo que quedó tocable de un mensaje
-    // anterior) o una ubicación/foto compartida llegan aquí como el id del
-    // botón o como el centinela 'UBICACION_COMPARTIDA'/'IMAGEN_RECIBIDA', que
-    // no son una nota válida para el dueño ni el conductor.
-    if (!esBoton && !ubicacion && !imagen) {
-      contexto.notas = mensaje.trim();
+    // Solo se guarda si el cliente realmente escribió texto libre: un botón
+    // (el de "Omitir", o uno viejo que quedó tocable de un mensaje anterior)
+    // o una ubicación/foto compartida llegan aquí como el id del botón o como
+    // el centinela 'UBICACION_COMPARTIDA'/'IMAGEN_RECIBIDA', que no son una
+    // respuesta válida para este paso.
+    if (!esBoton && !ubicacion && !imagen && contexto.pasoActual) {
+      const valor = mensaje.trim();
+      if (contexto.pasoActual === 'notaRecogida') contexto.notaRecogida = valor;
+      else if (contexto.pasoActual === 'notaDestino') contexto.notaDestino = valor;
+      else if (contexto.pasoActual === 'contactoDestino') contexto.contactoEntrega = valor;
     }
-    const siguiente = contexto.notaAdicionalSiguiente;
-    delete contexto.notaAdicionalSiguiente;
-    if (siguiente === 'crear') {
-      await this.continuarTrasConfirmacionPrecio(telefono, contexto, conversacionId);
-    } else {
-      await this.enviarSolicitudMomento(telefono, contexto, conversacionId);
-    }
+    delete contexto.pasoActual;
+    await this.avanzarPasoPendiente(telefono, contexto, conversacionId);
   }
 
   private async manejarMomento(telefono: string, mensaje: string, contexto: ConversationContext, conversacionId: string) {
@@ -552,7 +582,11 @@ export class WhatsAppBotService {
         if (contexto.esMandado) {
           await this.continuarTrasConfirmacionPrecio(telefono, contexto, conversacionId);
         } else {
-          await this.enviarSolicitudNotaAdicional(telefono, contexto, conversacionId, 'crear');
+          const pasos: PasoPendiente[] =
+            contexto.tipoServicio === 'DOMICILIO'
+              ? ['notaRecogida', 'notaDestino', 'contactoDestino']
+              : ['notaRecogida', 'notaDestino'];
+          await this.encolarPasosPendientes(telefono, contexto, conversacionId, pasos, 'crear');
         }
         return;
       }

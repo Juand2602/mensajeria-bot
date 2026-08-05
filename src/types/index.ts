@@ -49,7 +49,7 @@ export type ConversationState =
   | 'ESPERANDO_SELECCION_CARRERA_CANCELAR'
   | 'ESPERANDO_CONFIRMACION_CANCELACION'
   | 'ESPERANDO_CONFIRMACION_AYUDA'
-  | 'ESPERANDO_NOTA_ADICIONAL'
+  | 'ESPERANDO_PASO_PENDIENTE'
   | 'COMPLETADA';
 
 export interface UbicacionCompartida {
@@ -74,6 +74,8 @@ export interface DireccionPendiente {
   lng?: number;
 }
 
+export type PasoPendiente = 'notaRecogida' | 'notaDestino' | 'contactoDestino';
+
 export interface ConversationContext {
   nombre?: string;
   referidoTelefono?: string;
@@ -81,7 +83,12 @@ export interface ConversationContext {
   esMandado?: boolean;
   notas?: string;
   soloCotizacion?: boolean;
-  notaAdicionalSiguiente?: 'momento' | 'crear';
+  pasosPendientes?: PasoPendiente[];
+  pasoActual?: PasoPendiente;
+  pasoPendienteSiguiente?: 'destino' | 'momento' | 'crear';
+  notaRecogida?: string;
+  notaDestino?: string;
+  contactoEntrega?: string;
   recogida?: DireccionPendiente;
   destino?: DireccionPendiente;
   intentosRecogida?: number;
