@@ -89,6 +89,7 @@ model Carrera {
   origen            String  @default("WHATSAPP") // WHATSAPP | PANEL
 
   notas             String?
+  contactoEntrega   String?
   motivoCancelacion String?
 
   evidencias EvidenciaFoto[]
