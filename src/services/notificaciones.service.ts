@@ -33,6 +33,9 @@ export class NotificacionesService {
       if (carrera.notas) {
         await mensajeriaService.enviarMensaje(telefonoAdmin, `📝 Nota: ${carrera.notas}`);
       }
+      if (carrera.contactoEntrega) {
+        await mensajeriaService.enviarMensaje(telefonoAdmin, `👤 Recibe: ${carrera.contactoEntrega}`);
+      }
     } catch (e) { console.error('Error notificando nueva solicitud al dueño:', e); }
   }
 
@@ -70,6 +73,9 @@ export class NotificacionesService {
       await whatsappMessagesService.enviarPlantilla(carrera.conductor.telefono, plantilla, 'es', params);
       if (carrera.notas) {
         await mensajeriaService.enviarMensaje(carrera.conductor.telefono, `📝 Nota: ${carrera.notas}`);
+      }
+      if (carrera.contactoEntrega) {
+        await mensajeriaService.enviarMensaje(carrera.conductor.telefono, `👤 Recibe: ${carrera.contactoEntrega}`);
       }
     } catch (e) { console.error('Error notificando al conductor:', e); }
 

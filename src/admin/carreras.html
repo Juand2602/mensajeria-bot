@@ -177,6 +177,7 @@
       ];
 
       if (c.notas) filas.push(['Nota', esc(c.notas)]);
+      if (c.contactoEntrega) filas.push(['Contacto de entrega', esc(c.contactoEntrega)]);
 
       if (c.conductor) {
         const vehiculo = [c.conductor.tipoVehiculo, c.conductor.marca, c.conductor.linea, c.conductor.modelo]

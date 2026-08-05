@@ -19,6 +19,7 @@ export interface CrearCarreraInput {
   origen?: 'WHATSAPP' | 'PANEL';
   conductorId?: string;
   notas?: string;
+  contactoEntrega?: string;
 }
 
 export class CarrerasService {
@@ -68,6 +69,7 @@ export class CarrerasService {
         descuentoAplicado,
         origen: data.origen || 'WHATSAPP',
         notas: data.notas || null,
+        contactoEntrega: data.contactoEntrega || null,
       },
       include: { cliente: true, conductor: true },
     });
