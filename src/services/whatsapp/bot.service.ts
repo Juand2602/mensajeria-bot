@@ -656,6 +656,16 @@ export class WhatsAppBotService {
     await mensajeriaService.enviarMensaje(telefono, MENSAJES.OPCION_INVALIDA());
   }
 
+  // Los mandados ya usan contexto.notas para el encargo (capturado antes de pedir
+  // direcciones) — para el resto de servicios, se arman las notas de recogida y
+  // destino combinadas solo si hay ambas, o sin etiqueta si hay solo una.
+  private construirNotas(contexto: ConversationContext): string | undefined {
+    if (contexto.esMandado) return contexto.notas;
+    const { notaRecogida, notaDestino } = contexto;
+    if (notaRecogida && notaDestino) return `Recogida: ${notaRecogida} | Destino: ${notaDestino}`;
+    return notaRecogida || notaDestino || undefined;
+  }
+
   private async crearCarreraConfirmada(
     telefono: string,
     contexto: ConversationContext,
@@ -680,7 +690,8 @@ export class WhatsAppBotService {
       distanciaKm: contexto.distanciaKm!,
       fechaHoraProgramada: contexto.fechaHoraProgramada ? new Date(contexto.fechaHoraProgramada) : null,
       origen: 'WHATSAPP',
-      notas: contexto.notas,
+      notas: this.construirNotas(contexto),
+      contactoEntrega: contexto.contactoEntrega,
     });
 
     if (evidenciaUrl) {
